@@ -1,0 +1,62 @@
+- generic [ref=e1]:
+  - link "Bỏ qua tới nội dung chính" [ref=e2] [cursor=pointer]:
+    - /url: "#main"
+  - generic [ref=e3]:
+    - complementary "Thanh menu" [ref=e4]:
+      - generic [ref=e5]:
+        - generic [ref=e6]: Task Manager
+        - button "Mở thanh menu" [active] [ref=e77] [cursor=pointer]
+      - navigation "Điều hướng chính" [ref=e11]:
+        - link "Tổng quan" [ref=e12] [cursor=pointer]:
+          - /url: /
+        - link "Dự án" [ref=e19] [cursor=pointer]:
+          - /url: /projects
+    - generic [ref=e23]:
+      - button "Chuyển giao diện sáng/tối" [ref=e24]: 🌙 Tối
+      - main [ref=e25]:
+        - generic [ref=e26]:
+          - heading "Tổng quan" [level=1] [ref=e27]
+          - paragraph [ref=e28]: Tiến độ task (Spec Kit) trên tất cả dự án.
+        - region [ref=e29]:
+          - heading "Toàn cục — 74% hoàn thành" [level=2] [ref=e30]
+          - list [ref=e31]:
+            - listitem [ref=e32]:
+              - paragraph [ref=e33]: "2"
+              - paragraph [ref=e34]: Dự án
+            - listitem [ref=e35]:
+              - paragraph [ref=e36]: "2"
+              - paragraph [ref=e37]: Spec
+            - listitem [ref=e38]:
+              - paragraph [ref=e39]: "93"
+              - paragraph [ref=e40]: Task đã xong
+            - listitem [ref=e41]:
+              - paragraph [ref=e42]: "32"
+              - paragraph [ref=e43]: Task chưa xong
+          - generic [ref=e44]:
+            - generic [ref=e45]:
+              - generic [ref=e46]: "Đã xong: 93"
+              - generic [ref=e47]: "Chưa xong: 32"
+              - generic [ref=e48]: "Tổng: 125"
+            - progressbar "Tiến độ" [ref=e49]
+            - paragraph [ref=e51]: 74% hoàn thành
+        - region [ref=e52]:
+          - heading "Tiến độ từng dự án" [level=2] [ref=e53]
+          - list [ref=e54]:
+            - listitem [ref=e55]:
+              - link [ref=e56] [cursor=pointer]:
+                - /url: /projects/3
+                - text: Deploy Server
+                - paragraph [ref=e57]: Chưa có thư mục specs/.
+            - listitem [ref=e58]:
+              - 'link "Nuôi Cá Lồng Bè Đã xong: 93 Chưa xong: 32 Tổng: 125 74 74% hoàn thành" [ref=e59] [cursor=pointer]':
+                - /url: /projects/2
+                - text: Nuôi Cá Lồng Bè
+                - generic [ref=e60]:
+                  - generic [ref=e61]:
+                    - generic [ref=e62]: "Đã xong: 93"
+                    - generic [ref=e63]: "Chưa xong: 32"
+                    - generic [ref=e64]: "Tổng: 125"
+                  - progressbar "Tiến độ" [ref=e65]
+                  - paragraph [ref=e67]: 74% hoàn thành
+  - button "Open Next.js Dev Tools" [ref=e73] [cursor=pointer]
+  - alert [ref=e78]

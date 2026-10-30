@@ -17,10 +17,10 @@ export default async function ProjectPage({
   const total = sumStats(specs.map((s) => s.stats));
 
   return (
-    <main className="mx-auto w-full max-w-4xl space-y-6 px-4 py-10">
+    <main className="mx-auto w-full max-w-4xl space-y-6">
       <nav className="text-sm">
-        <Link href="/" className="text-blue-600 hover:underline dark:text-blue-400">
-          ← Tất cả dự án
+        <Link href="/projects" className="text-blue-600 hover:underline dark:text-blue-400">
+          ← Dự án
         </Link>
       </nav>
       <header className="space-y-1">

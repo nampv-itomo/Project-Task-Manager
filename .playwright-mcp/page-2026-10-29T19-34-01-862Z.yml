@@ -1,0 +1,63 @@
+- generic [ref=f4e1]:
+  - link "Bỏ qua tới nội dung chính" [ref=f4e2] [cursor=pointer]:
+    - /url: "#main"
+  - generic [ref=f4e3]:
+    - button "Mở menu" [expanded] [ref=f4e4] [cursor=pointer]
+    - complementary "Thanh menu" [ref=f4e60]:
+      - generic [ref=f4e61]:
+        - generic [ref=f4e62]: Task Manager
+        - button "Đóng menu" [ref=f4e63] [cursor=pointer]
+      - navigation "Điều hướng chính" [active] [ref=f4e66]:
+        - link "Tổng quan" [ref=f4e67] [cursor=pointer]:
+          - /url: /
+        - link "Dự án" [ref=f4e74] [cursor=pointer]:
+          - /url: /projects
+    - button "Đóng menu" [ref=f4e78] [cursor=pointer]
+    - generic [ref=f4e7]:
+      - button "Chuyển giao diện sáng/tối" [ref=f4e8]: 🌙 Tối
+      - main [ref=f4e9]:
+        - generic [ref=f4e10]:
+          - heading "Dự án" [level=1] [ref=f4e11]
+          - paragraph [ref=f4e12]: Danh sách dự án trên máy này (mỗi dự án đọc từ thư mục specs/).
+        - region [ref=f4e13]:
+          - heading "Thêm dự án" [level=2] [ref=f4e14]
+          - generic [ref=f4e15]:
+            - generic [ref=f4e16]:
+              - generic [ref=f4e17]: Tên (tuỳ chọn)
+              - textbox "Tên (tuỳ chọn)" [ref=f4e18]:
+                - /placeholder: Tên dự án
+            - generic [ref=f4e19]:
+              - generic [ref=f4e20]: Đường dẫn dự án
+              - generic [ref=f4e21]:
+                - textbox "Đường dẫn dự án" [ref=f4e22]:
+                  - /placeholder: /Users/me/Work/my-project
+                - button "Chọn thư mục…" [ref=f4e23]
+            - button "Thêm dự án" [ref=f4e24]
+        - region [ref=f4e25]:
+          - heading "Dự án (2)" [level=2] [ref=f4e26]
+          - list [ref=f4e27]:
+            - listitem [ref=f4e28]:
+              - generic [ref=f4e29]:
+                - generic [ref=f4e30]:
+                  - link "Deploy Server" [ref=f4e31] [cursor=pointer]:
+                    - /url: /projects/3
+                  - paragraph [ref=f4e32]: /Users/nampham/Work/ITOMO/GITHUB_DEPLOY
+                - button "Gỡ dự án Deploy Server" [ref=f4e33]: Gỡ
+              - paragraph [ref=f4e34]: Chưa có thư mục specs/.
+            - listitem [ref=f4e35]:
+              - generic [ref=f4e36]:
+                - generic [ref=f4e37]:
+                  - link "Nuôi Cá Lồng Bè" [ref=f4e38] [cursor=pointer]:
+                    - /url: /projects/2
+                  - paragraph [ref=f4e39]: /Users/nampham/Work/ITOMO/CA_SACH_LAO_NGU
+                - button "Gỡ dự án Nuôi Cá Lồng Bè" [ref=f4e40]: Gỡ
+              - paragraph [ref=f4e41]: 2 spec
+              - generic [ref=f4e42]:
+                - generic [ref=f4e43]:
+                  - generic [ref=f4e44]: "Đã xong: 93"
+                  - generic [ref=f4e45]: "Chưa xong: 32"
+                  - generic [ref=f4e46]: "Tổng: 125"
+                - progressbar "Tiến độ" [ref=f4e47]
+                - paragraph [ref=f4e49]: 74% hoàn thành
+  - button "Open Next.js Dev Tools" [ref=f4e55] [cursor=pointer]
+  - alert [ref=f4e59]
