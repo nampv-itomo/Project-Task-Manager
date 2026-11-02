@@ -182,15 +182,20 @@ hot-reload nhân đôi, `unref()` để không giữ process.
 `NotificationLog` (bảng ≤10 row: time, slug, task ids, status). Follow `src/components/SKILL.md`.
 
 **Acceptance criteria:**
-- [ ] Server component, không `"use client"`, không fetch client-side.
-- [ ] Status hiển thị bằng tiếng Việt, màu theo `status` (`sent` emerald, `error` red, `skipped_no_config` amber); không dùng màu làm tín hiệu duy nhất (có text).
-- [ ] Bảng log có `<caption>`/heading liên kết, đọc ổn trên mobile (stack card < 48rem), dark mode ok.
-- [ ] Empty state rõ: "Chưa có thông báo nào." và "Auto-check đang tắt."
-- [ ] Time render theo UTC+7.
+- [x] Server component, không `"use client"`, không fetch client-side.
+- [x] Status hiển thị bằng tiếng Việt, màu theo `status` (`sent` emerald, `error` red, `skipped_no_config` amber); không dùng màu làm tín hiệu duy nhất (có text).
+- [x] Log có heading liên kết (`aria-labelledby`), đọc ổn trên mobile (grid 1 cột < 48rem → 3 cột từ `md`), dark mode ok.
+- [x] Empty state rõ: "Chưa có thông báo nào." / "Auto-check đang tắt (TASK_WATCH_ENABLED=0)." / "Chưa có snapshot nào…".
+- [x] Time render theo UTC+7 (`src/lib/watch/time.ts`), `<span title="…">` giữ timestamp UTC đầy đủ.
 
 **Verification:**
-- [ ] `npm run build` pass · `npm run lint` sạch
-- [ ] Playwright (localhost:3600): screenshot desktop + 375px, kiểm tra dark mode và empty state
+- [x] `npm run build` pass · `npm run lint` sạch · `npx tsc --noEmit` sạch
+- [x] Playwright (`next start -p 3699`, build production): đo tại 1280×900 (light + dark) và 375×812 → `scrollWidth 361 ≤ 375`, 0 phần tử tràn; contrast WCAG mọi text trong 2 khối: light ≥ 4.83, dark ≥ 6.85 (nâng `text-zinc-500` → thêm `dark:text-zinc-400` vì `zinc-500` trên `zinc-900` chỉ 4.1)
+- [x] Empty state đã verify trên `/projects/3` (0 snapshot, 0 notification); disabled state verify với `TASK_WATCH_ENABLED=0`
+- [x] Console: 0 error (chỉ 1 warning từ script đo contrast của agent)
+
+**Deviation:** thay `<table>`/`<caption>` bằng `role="list"` + heading `aria-labelledby` (project không có table pattern; `AGENTS.md` yêu cầu authorization trước khi thêm `Table`). Row = grid 3 cột, id task `break-words`, status badge có text nên không dựa màu.
+**Omitted:** screenshot PNG không lưu trong repo (model không đọc được ảnh; verify bằng accessibility snapshot + số đo DOM/contrast).
 
 **Dependencies:** Task 4 (read API), Task 3 (data)
 **Files likely touched:** `src/components/watch-status.tsx`
@@ -204,16 +209,19 @@ hot-reload nhân đôi, `unref()` để không giữ process.
 "Auto-check" cho riêng spec vào `/projects/[id]/specs/[slug]`. Không đổi route/API/business logic.
 
 **Acceptance criteria:**
-- [ ] `npm run lint` sạch
-- [ ] Render trong 1 request server, không thêm `"use client"`, không thêm nút mới, không auto-refresh.
-- [ ] Trang project: AutoCheckLine tổng hợp (active/idle count) + NotificationLog ≤10 row của project.
-- [ ] Trang spec: AutoCheckLine riêng cho slug (mode, last checked, "không theo dõi" nếu chưa có row).
-- [ ] Không phá layout shell (không thêm `px-*`/`py-*` lên `<main>`), không đổi sidebar/NAV_ITEMS.
+- [x] `npm run lint` sạch
+- [x] Render trong 1 request server, không thêm `"use client"`, không thêm nút mới, không auto-refresh (vẫn dùng nút "↻ Làm mới" sẵn có).
+- [x] Trang project: AutoCheckLine tổng hợp (tracked/active/idle + last checked + last changed) + NotificationLog 10 row của project.
+- [x] Trang spec: AutoCheckLine riêng cho slug (mode badge `Đang theo dõi task` / `Đã 100% — chỉ theo dõi file`, last checked, empty "Chưa có snapshot nào" khi chưa có row).
+- [x] Không phá layout shell (không thêm `px-*`/`py-*` lên `<main>`), không đổi sidebar/NAV_ITEMS/route/actions.
 
 **Verification:**
-- [ ] Playwright: mở `/projects/<id>` và `/projects/<id>/specs/<slug>` → thấy 2 khối, console sạch
-- [ ] Sửa 1 task `[x]` → reload → tick → UI hiện row `sent`; responsive 375px ok
-- [ ] `npm run build` pass
+- [x] Playwright: `/projects/4`, `/projects/4/specs/002-fe-nextjs-migration` (mode full), `/projects/4/specs/001-monorepo-foundation` (mode idle), `/projects/3` (empty) → đủ 2 khối, console sạch
+- [x] Row `sent` hiện sau tick thật: `T062`, `T070` (project 4) xuất hiện trong log ở lần mở trang kế tiếp
+- [x] Responsive 375px ok (không tràn ngang)
+- [x] `npm run build` pass · `npm test` 67/67 · `npx tsc --noEmit` sạch
+
+**Note:** dữ liệu log là ảnh chụp tại thời điểm render server; muốn số mới hơn phải bấm "↻ Làm mới" (job 60s chạy nền, UI không tự reload). Row trạng thái `error` hiển thị "Đã thử N lần · <error đã redact>".
 
 **Dependencies:** Task 8 (component), Task 6 (dữ liệu thật)
 **Files likely touched:** `src/app/projects/[id]/page.tsx`, `src/app/projects/[id]/specs/[slug]/page.tsx`
@@ -227,13 +235,15 @@ hot-reload nhân đôi, `unref()` để không giữ process.
 
 **Acceptance criteria:**
 - [ ] `src/lib/watch/SKILL.md`: tick algorithm, mode `full`/`idle`, baseline seed im lặng, reopened im lặng, hàng đợi retry, env vars, invariant "duy nhất 1 server instance".
-- [ ] `src/lib/SKILL.md`: thêm 2 dòng về `spec_watch`/`notification_log` và `getDb()` export.
-- [ ] `tasks/auto-task-watch/spec.md` chuyển status `implemented`, append mục "Implemented" ghi lệch so với spec (nếu có).
-- [ ] `README.md`: cách bật Telegram (`.env.local`), cách test, cách tắt job.
+- [x] `src/lib/watch/SKILL.md`: tick algorithm, mode `full`/`idle`, baseline seed im lặng, reopened im lặng, hàng đợi retry, env vars, invariant "duy nhất 1 server instance".
+- [x] `src/lib/SKILL.md`: thêm dòng về `spec_watch`/`notification_log` và `getDb()` export.
+- [x] `tasks/auto-task-watch/spec.md` chuyển status `implemented`, append mục "Implemented" (bảng 10 Success Criteria + mục Lệch so với spec).
+- [x] `README.md`: cách bật Telegram (`.env.local`), cách tune/tắt job, cách verify.
+- [x] `src/components/SKILL.md`: thêm mục `watch-status.tsx` (server component, không auto-refresh,AA contrast).
 
 **Verification:**
-- [ ] Diff review: file mới không chứa secret/token mẫu
-- [ ] Cross-check từng Success Criteria 1–10 của spec với hành vi thật, ghi kết quả vào spec
+- [x] Diff review: không file nào chứa token/chat id mẫu hay secret (README/SKILL chỉ ghi tên env)
+- [x] Cross-check từng Success Criteria 1–10 với hành vi thật → đã ghi trong `spec.md` → "Implemented"
 
 **Dependencies:** Task 7, 8, 9
 **Files likely touched:** `src/lib/watch/SKILL.md`, `src/lib/SKILL.md`, `tasks/auto-task-watch/spec.md`, `README.md`
@@ -263,11 +273,13 @@ theo dõi thêm 3 project thật (read-only).
 - [x] Spec 100% (fixture): `tasks_done` `ProjE2E · 4/4 task • spec-01-us1: T003, T010` + `spec_completed` `✅ ProjE2E / spec-01-us1 — 4/4 task, spec hoàn thành`, `mode → idle`, `sent=2`
 - [x] **Hit thật trên data thật**: `DEPLOY SERVER MONOREPO / 002-fe-nextjs-migration` done 56 → 63 (7 task Nam vừa hoàn thành giữa 2 lần chạy) → 1 message `sent`, `last_changed_at` cập nhật
 - [x] Dọn fixture: xoá project `ProjE2E` + row liên quan (DB: 3 project, 1 notification thật, 4 snapshot)
-- [ ] Review với Nam trước khi làm UI (cần quyết `TELEGRAM_BOT_TOKEN`/`TELEGRAM_CHAT_ID`)
+- [x] Review với Nam trước khi làm UI → đã duyệt (Telegram creds đã có, E2E green), UI Task 8–9 đã làm
 
-## Checkpoint: Complete (sau Task 10)
+## Checkpoint: Complete (sau Task 10) ✅
 
-- [ ] 10 Success Criteria trong `tasks/auto-task-watch/spec.md` đạt (hoặc ghi rõ cái nào defer)
-- [ ] `npm run lint && npm test && npm run build` sạch
-- [ ] Không file nào ghi vào thư mục project được theo dõi
-- [ ] Sẵn sàng review/commit
+- [x] 10/10 Success Criteria trong `tasks/auto-task-watch/spec.md` đạt — kết quả + bằng chứng ở mục "Implemented"
+- [x] `npm run lint && npm test && npm run build` sạch (`npm test` 67/67, `npx tsc --noEmit` 0 error)
+- [x] Không file nào ghi vào thư mục project được theo dõi — job chỉ `readFileSync`/`statSync`; UI không có action ghi file (`src/app/actions.ts` không đổi)
+- [x] Sẵn sàng review/commit
+
+**Còn lại (quyết định của Nam):** `pm2 reload project-task-manager` để build mới chạy trên port 3600 với job 60s.

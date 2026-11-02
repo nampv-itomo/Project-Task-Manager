@@ -1,6 +1,6 @@
 # Spec: Auto Task Watch + Telegram Notification
 
-Status: **draft — chờ Nam duyệt** · Intent đã confirm qua interview (xem "Objective").
+Status: **implemented** (backend + UI + docs xong; còn `pm2 reload` production là quyết định của Nam) · Intent đã confirm qua interview (xem "Objective").
 Scope check (Phase 0): **1 capability** → không cần capability map.
 
 ## Objective
@@ -281,3 +281,31 @@ Verification thực tế (browser) chỉ khi cần xem UI: playwright MCP trên 
 3. Nội dung message tiếng Việt + emoji `✅` như mẫu — **ok?**, hay muốn gọn hơn (không emoji)?
 4. Trang `/` (Tổng quan) có cần hiện "Thông báo gần đây" toàn cục không? Spec hiện tại: **không** (chỉ trang project + spec).
 5. Job có cần chạy trong `npm run dev` không, hay chỉ production? Spec hiện tại: **chạy cả dev** (để test dễ), có `TASK_WATCH_ENABLED=0` để tắt.
+
+## Implemented (kết quả thực tế)
+
+**Success Criteria** — tất cả đã verify (`tasks/auto-task-watch/todo.md` → Checkpoint E2E, 02/11/2026):
+
+| # | Kết quả | Bằng chứng |
+| --- | --- | --- |
+| 1 | ✅ | log `[watch] started interval=…`, tick mỗi chu kỳ, kèm `specs/active/idle/newlyDone/queued` + `tick done sent=…` |
+| 2 | ✅ | fixture `ProjE2E`: `[ ] T002` → `[x]` lúc 15:00:20 → `queued=1 sent=1` lúc 15:00:38 (18s); UI `/projects/[id]` hiện row `sent` |
+| 3 | ✅ | spec đạt 4/4 → message `spec_completed` riêng, `spec_watch.mode` → `idle` (`sqlite3 select slug,mode,pending`) |
+| 4 | ✅ | sửa `tasks.md` của spec `idle` → `statSync` thấy `mtime` đổi → re-arm `full`, task mới được thông báo |
+| 5 | ✅ | restart server không gửi lại message cũ (snapshot + queue trong SQLite); project thật `002-fe-nextjs-migration` 56→63 chỉ gửi 1 message |
+| 6 | ✅ | spec mới thấy lần đầu → `seeded`, 0 message (unit test `runner.test.ts`) |
+| 7 | ✅ | reopened `[x]`→`[ ]` chỉ cập nhật snapshot, 0 message (unit test) |
+| 8 | ✅ | thiếu `TELEGRAM_*` → `skipped_no_config`, job vẫn chạy, UI vẫn hiện log + hint amber |
+| 9 | ✅ | token sai → `status=error`, `last_error="HTTP 401: Unauthorized"`, không lộ token/chat id (smoke `--bad-token`) |
+| 10 | ✅ | `npm test` 67/67 · `npm run lint` sạch · `npx tsc --noEmit` sạch · `npm run build` sạch |
+
+**Lệch so với spec** (ghi chi tiết ở `todo.md`):
+
+- `MAX_SEND_ATTEMPTS = 5` (spec viết "retry tối đa 4 lần") → tổng 5 lần gửi cho 1 message.
+- `store.ts` dùng 1 API `saveSnapshot()` thay vì `upsertSnapshot` / `seedSnapshot` / `setMode`.
+- Runner flush hàng đợi ngay cuối mỗi tick (message vừa queue được gửi trong cùng tick).
+- UI dùng `role="list"` + heading `aria-labelledby`, không dùng `<table>`/`<caption>` (project không có table pattern).
+- Secondary text thêm `dark:text-zinc-400` vì `zinc-500` trên `zinc-900` chỉ 4.1:1 (fail AA).
+- Log tách 2 dòng: per-project `queued=` và per-tick `sent= failed= skippedNoConfig=`.
+
+**Open Questions — đã chốt:** (1) thêm `allowImportingTsExtensions` ✅ đã thêm; (2) trang `/settings` ❌ không làm (token trong `.env.local`); (3) message tiếng Việt + emoji `✅` cho `spec_completed` ✅ giữ; (4) không có khối notification toàn cục ở `/` ✅ giữ nguyên; (5) job chạy cả trong `npm run dev` ✅, tắt bằng `TASK_WATCH_ENABLED=0`.
