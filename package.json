@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start -p 3600",
     "lint": "eslint",
-    "test": "node --test --conditions=react-server \"tests/**/*.test.ts\""
+    "test": "node --test --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --conditions=react-server \"tests/**/*.test.ts\""
   },
   "dependencies": {
     "better-sqlite3": "^13.0.3",

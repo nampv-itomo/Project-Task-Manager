@@ -109,13 +109,12 @@ retry có cap. Không log token.
 - [x] `flushPendingNotifications(FLUSH_BATCH=10)`: thiếu creds → `skipped_no_config` (attempts giữ 0);
   HTTP lỗi/network/`ok:false` → `error` + `attempts++` + `last_error`; `ok` → `sent`.
 - [x] Không ném exception ra ngoài flush. *Deviation:* `last_error` được **redact** token/chat id.
-- [x] Test stub `globalThis.fetch` thay vì manual smoke (máy dev **không có** `.env.local` → chưa có creds thật).
 
 **Verification:** ✅
-- [x] `tests/telegram.test.ts` 9 case · `npm test` 42/42 · lint + tsc sạch
-- [x] Test assert error không chứa token
-- [x] Commit `34c44d3`
-- [ ] **Chờ Nam**: manual smoke với creds thật (cần `.env.local`)
+- [x] `tests/telegram.test.ts` 9 case · lint + tsc sạch · commit `34c44d3`
+- [x] Manual smoke với creds thật (`.env.local`): `scripts/smoke-telegram.mts` → `flush: { sent: 2, failed: 0, skipped: 0 }`, 2 row `sent`
+- [x] Manual token sai (`--bad-token`): `status=error`, `attempts=1`, `last_error="HTTP 401: Unauthorized"` → không lộ token/chat id
+- [x] Script dùng DB thư mục tạm → không đụng `data/projects.db`; `npm test` thêm `--disable-warning=MODULE_TYPELESS_PACKAGE_JSON`
 
 **Dependencies:** Task 4 ✅
 **Files likely touched:** `src/lib/watch/telegram.ts`
