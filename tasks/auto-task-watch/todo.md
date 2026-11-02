@@ -259,8 +259,10 @@ theo dõi thêm 3 project thật (read-only).
 - [x] Spec đạt 100% → row `spec_completed` + `spec_watch.mode = idle` (`active=0 idle=1`)
 - [x] Restart server → 0 notification mới (hàng đợi + snapshot bền trên SQLite)
 - [x] Reopen `[x] → [ ]` → `newlyDone=0 queued=0`, mode về `full`, 0 row mới
-- [~] Telegram ≤65s: **chưa verify được** — máy dev không có `.env.local`, row ở status `skipped_no_config`
-- [x] Dọn fixture: xoá project `ProjE2E` + row liên quan (DB hiện 3 project, 0 notification, 4 snapshot)
+- [x] Telegram thật ≤ 65s: sửa file 15:00:20 → tick 15:00:38 `queued=1 sent=1` (interval 15s), row `sent`
+- [x] Spec 100% (fixture): `tasks_done` `ProjE2E · 4/4 task • spec-01-us1: T003, T010` + `spec_completed` `✅ ProjE2E / spec-01-us1 — 4/4 task, spec hoàn thành`, `mode → idle`, `sent=2`
+- [x] **Hit thật trên data thật**: `DEPLOY SERVER MONOREPO / 002-fe-nextjs-migration` done 56 → 63 (7 task Nam vừa hoàn thành giữa 2 lần chạy) → 1 message `sent`, `last_changed_at` cập nhật
+- [x] Dọn fixture: xoá project `ProjE2E` + row liên quan (DB: 3 project, 1 notification thật, 4 snapshot)
 - [ ] Review với Nam trước khi làm UI (cần quyết `TELEGRAM_BOT_TOKEN`/`TELEGRAM_CHAT_ID`)
 
 ## Checkpoint: Complete (sau Task 10)
