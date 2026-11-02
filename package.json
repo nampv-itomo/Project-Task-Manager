@@ -6,7 +6,8 @@
     "dev": "next dev -p 3600",
     "build": "next build",
     "start": "next start -p 3600",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "node --test --conditions=react-server \"tests/**/*.test.ts\""
   },
   "dependencies": {
     "better-sqlite3": "^13.0.3",
