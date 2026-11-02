@@ -179,3 +179,13 @@ test("pruneNotifications keeps the newest rows and drops the oldest", () => {
   assert.equal(kept[0].slug, "spec-249");
   assert.equal(kept[199].slug, "spec-50");
 });
+
+test("projectSnapshots lists every watched spec of one project, ordered by slug", () => {
+  store.saveSnapshot(seedSnapshot({ project_id: 7, slug: "spec-02-b" }));
+  store.saveSnapshot(seedSnapshot({ project_id: 7, slug: "spec-01-a" }));
+  store.saveSnapshot(seedSnapshot({ project_id: 8, slug: "spec-99" }));
+
+  const rows = store.projectSnapshots(7);
+  assert.deepEqual(rows.map((row) => row.slug), ["spec-01-a", "spec-02-b"]);
+  assert.deepEqual(store.projectSnapshots(1234), []);
+});

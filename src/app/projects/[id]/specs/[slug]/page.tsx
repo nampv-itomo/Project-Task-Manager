@@ -2,6 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getProject } from "@/lib/db";
 import { computeStats, getSpec } from "@/lib/specs";
+import { getSnapshot } from "@/lib/watch/store";
+import { watchStatus } from "@/lib/watch/start";
+import { AutoCheckLine } from "@/components/watch-status";
 import { StatsBadges } from "@/components/progress";
 import { RefreshButton } from "@/components/refresh-button";
 
@@ -27,6 +30,16 @@ export default async function SpecPage({
 
   const filter = status === "done" || status === "pending" ? status : "all";
   const stats = computeStats(spec.phases.flatMap((p) => p.tasks));
+  const job = watchStatus();
+  const watched = getSnapshot(project.id, slug);
+  const watchSummary = {
+    tracked: watched ? 1 : 0,
+    active: watched?.mode === "full" ? 1 : 0,
+    idle: watched?.mode === "idle" ? 1 : 0,
+    lastCheckedAt: watched?.last_checked_at ?? null,
+    lastChangedAt: watched?.last_changed_at ?? null,
+    mode: watched?.mode,
+  };
   const base = `/projects/${project.id}/specs/${encodeURIComponent(slug)}`;
 
   const phases = spec.phases
@@ -58,6 +71,12 @@ export default async function SpecPage({
       ) : (
         <>
           <StatsBadges stats={stats} />
+          <AutoCheckLine
+            summary={watchSummary}
+            enabled={job.enabled}
+            intervalMs={job.intervalMs}
+            heading="Auto-check cho spec này"
+          />
           <div className="flex gap-2" role="group" aria-label="Lọc theo trạng thái">
             {FILTERS.map((f) => (
               <Link

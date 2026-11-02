@@ -88,6 +88,14 @@ export function getSnapshot(projectId: number, slug: string): SpecSnapshot | nul
   return row ? toSnapshot(row) : null;
 }
 
+/** All watched specs of one project, ordered by slug (UI summary source). */
+export function projectSnapshots(projectId: number): SpecSnapshot[] {
+  const rows = getDb()
+    .prepare("SELECT * FROM spec_watch WHERE project_id = ? ORDER BY slug")
+    .all(projectId) as SpecWatchRow[];
+  return rows.map(toSnapshot);
+}
+
 export function saveSnapshot(snapshot: SpecSnapshot): void {
   getDb()
     .prepare(

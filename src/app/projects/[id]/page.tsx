@@ -2,9 +2,17 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getProject } from "@/lib/db";
 import { listSpecs, sumStats } from "@/lib/specs";
+import { projectSnapshots, recentNotifications } from "@/lib/watch/store";
+import { watchStatus } from "@/lib/watch/start";
+import { AutoCheckLine, NotificationLog } from "@/components/watch-status";
 import { StatsBadges } from "@/components/progress";
 
 export const dynamic = "force-dynamic";
+
+/** spec_watch stores "YYYY-MM-DD HH:MM:SS" UTC, so plain string max is correct. */
+function latest(values: (string | null)[]): string | null {
+  return values.reduce<string | null>((max, value) => (value && value > (max ?? "") ? value : max), null);
+}
 
 export default async function ProjectPage({
   params,
@@ -15,6 +23,17 @@ export default async function ProjectPage({
 
   const specs = listSpecs(project.path);
   const total = sumStats(specs.map((s) => s.stats));
+
+  const job = watchStatus();
+  const snapshots = projectSnapshots(project.id);
+  const notifications = recentNotifications(project.id, 10);
+  const summary = {
+    tracked: snapshots.length,
+    active: snapshots.filter((s) => s.mode === "full").length,
+    idle: snapshots.filter((s) => s.mode === "idle").length,
+    lastCheckedAt: latest(snapshots.map((s) => s.last_checked_at)),
+    lastChangedAt: latest(snapshots.map((s) => s.last_changed_at)),
+  };
 
   return (
     <main className="mx-auto w-full max-w-4xl space-y-6">
@@ -54,6 +73,10 @@ export default async function ProjectPage({
           ))}
         </ul>
       </section>
+
+      <AutoCheckLine summary={summary} enabled={job.enabled} intervalMs={job.intervalMs} />
+
+      <NotificationLog rows={notifications} />
     </main>
   );
 }
