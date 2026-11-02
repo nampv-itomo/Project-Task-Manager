@@ -2,6 +2,7 @@ import fs from "node:fs";
 import Link from "next/link";
 import { listProjects } from "@/lib/db";
 import { listSpecs, sumStats } from "@/lib/specs";
+import { listTasks } from "@/lib/tasks";
 import { AddProjectForm } from "@/components/add-project-form";
 import { StatsBadges } from "@/components/progress";
 import { RemoveProjectButton } from "@/components/remove-project-button";
@@ -11,11 +12,15 @@ export const dynamic = "force-dynamic";
 export default function ProjectsPage() {
   const projects = listProjects().map((p) => {
     const specs = listSpecs(p.path);
+    const tasks = listTasks(p.path);
+    const taskStats = sumStats(tasks.map((t) => t.stats));
     return {
       ...p,
       exists: fs.existsSync(p.path),
       specCount: specs.length,
-      stats: sumStats(specs.map((s) => s.stats)),
+      taskCount: tasks.length,
+      specStats: sumStats(specs.map((s) => s.stats)),
+      taskStats,
     };
   });
 
@@ -66,12 +71,16 @@ export default function ProjectsPage() {
               </div>
               {!p.exists ? (
                 <p className="text-sm text-red-600">Không tìm thấy thư mục.</p>
-              ) : p.specCount === 0 ? (
-                <p className="text-sm text-zinc-500">Chưa có thư mục specs/.</p>
               ) : (
                 <>
-                  <p className="text-xs text-zinc-500">{p.specCount} spec</p>
-                  <StatsBadges stats={p.stats} />
+                  <div className="flex items-center gap-2 text-xs text-zinc-500">
+                    <span>{p.specCount} spec</span>
+                    <span>{p.taskCount} task</span>
+                  </div>
+                  <div className="flex gap-3">
+                    <StatsBadges stats={p.specStats} />
+                    {p.taskCount > 0 && <StatsBadges stats={p.taskStats} />}
+                  </div>
                 </>
               )}
             </li>

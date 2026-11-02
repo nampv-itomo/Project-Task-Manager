@@ -1,6 +1,6 @@
 import "server-only";
 import { getDb } from "../db.ts";
-import type { NotificationRow, NotifyPayload, SpecSnapshot } from "./types.ts";
+import type { NotificationRow, NotifyPayload, SpecSnapshot, TaskSnapshot } from "./types.ts";
 
 /** A notification is retried at most this many times before it is abandoned. */
 export const MAX_SEND_ATTEMPTS = 5;
@@ -13,6 +13,20 @@ type SpecWatchRow = {
   slug: string;
   mode: string;
   done_ids: string;
+  total: number;
+  done: number;
+  pending: number;
+  seeded: number;
+  file_mtime_ms: number | null;
+  last_checked_at: string | null;
+  last_changed_at: string | null;
+};
+
+type TaskWatchRow = {
+  project_id: number;
+  slug: string;
+  mode: string;
+  done_items: string;
   total: number;
   done: number;
   pending: number;
@@ -64,6 +78,22 @@ function toSnapshot(row: SpecWatchRow): SpecSnapshot {
   };
 }
 
+function toTaskSnapshot(row: TaskWatchRow): TaskSnapshot {
+  return {
+    project_id: row.project_id,
+    slug: row.slug,
+    mode: row.mode === "idle" ? "idle" : "full",
+    done_items: parseIds(row.done_items, `${row.project_id}/${row.slug}`),
+    total: row.total,
+    done: row.done,
+    pending: row.pending,
+    seeded: row.seeded === 1,
+    file_mtime_ms: row.file_mtime_ms,
+    last_checked_at: row.last_checked_at,
+    last_changed_at: row.last_changed_at,
+  };
+}
+
 function toLogRow(row: LogRow): NotificationRow {
   return {
     id: row.id,
@@ -88,12 +118,26 @@ export function getSnapshot(projectId: number, slug: string): SpecSnapshot | nul
   return row ? toSnapshot(row) : null;
 }
 
+export function getTaskSnapshot(projectId: number, slug: string): TaskSnapshot | null {
+  const row = getDb()
+    .prepare("SELECT * FROM task_watch WHERE project_id = ? AND slug = ?")
+    .get(projectId, slug) as TaskWatchRow | undefined;
+  return row ? toTaskSnapshot(row) : null;
+}
+
 /** All watched specs of one project, ordered by slug (UI summary source). */
 export function projectSnapshots(projectId: number): SpecSnapshot[] {
   const rows = getDb()
     .prepare("SELECT * FROM spec_watch WHERE project_id = ? ORDER BY slug")
     .all(projectId) as SpecWatchRow[];
   return rows.map(toSnapshot);
+}
+
+export function projectTaskSnapshots(projectId: number): TaskSnapshot[] {
+  const rows = getDb()
+    .prepare("SELECT * FROM task_watch WHERE project_id = ? ORDER BY slug")
+    .all(projectId) as TaskWatchRow[];
+  return rows.map(toTaskSnapshot);
 }
 
 export function saveSnapshot(snapshot: SpecSnapshot): void {
@@ -118,6 +162,38 @@ export function saveSnapshot(snapshot: SpecSnapshot): void {
       slug: snapshot.slug,
       mode: snapshot.mode,
       done_ids: JSON.stringify(snapshot.done_ids),
+      total: snapshot.total,
+      done: snapshot.done,
+      pending: snapshot.pending,
+      seeded: snapshot.seeded ? 1 : 0,
+      file_mtime_ms: snapshot.file_mtime_ms,
+      last_checked_at: snapshot.last_checked_at,
+      last_changed_at: snapshot.last_changed_at,
+    });
+}
+
+export function saveTaskSnapshot(snapshot: TaskSnapshot): void {
+  getDb()
+    .prepare(
+      `INSERT INTO task_watch
+        (project_id, slug, mode, done_items, total, done, pending, seeded, file_mtime_ms, last_checked_at, last_changed_at)
+       VALUES (@project_id, @slug, @mode, @done_items, @total, @done, @pending, @seeded, @file_mtime_ms, @last_checked_at, @last_changed_at)
+       ON CONFLICT (project_id, slug) DO UPDATE SET
+        mode = excluded.mode,
+        done_items = excluded.done_items,
+        total = excluded.total,
+        done = excluded.done,
+        pending = excluded.pending,
+        seeded = excluded.seeded,
+        file_mtime_ms = excluded.file_mtime_ms,
+        last_checked_at = excluded.last_checked_at,
+        last_changed_at = excluded.last_changed_at`,
+    )
+    .run({
+      project_id: snapshot.project_id,
+      slug: snapshot.slug,
+      mode: snapshot.mode,
+      done_items: JSON.stringify(snapshot.done_items),
       total: snapshot.total,
       done: snapshot.done,
       pending: snapshot.pending,

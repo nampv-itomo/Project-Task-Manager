@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getProject } from "@/lib/db";
 import { listSpecs, sumStats } from "@/lib/specs";
+import { listTasks } from "@/lib/tasks";
 import { projectSnapshots, recentNotifications } from "@/lib/watch/store";
 import { watchStatus } from "@/lib/watch/start";
 import { AutoCheckLine, NotificationLog } from "@/components/watch-status";
@@ -22,10 +23,12 @@ export default async function ProjectPage({
   if (!project) notFound();
 
   const specs = listSpecs(project.path);
+  const tasks = listTasks(project.path);
   const total = sumStats(specs.map((s) => s.stats));
 
   const job = watchStatus();
   const snapshots = projectSnapshots(project.id);
+  // taskSnapshots(project.id); // available for future use
   const notifications = recentNotifications(project.id, 10);
   const summary = {
     tracked: snapshots.length,
@@ -67,6 +70,32 @@ export default async function ProjectPage({
                   <StatsBadges stats={s.stats} />
                 ) : (
                   <p className="text-sm text-zinc-500">Chưa có tasks.md</p>
+                )}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section aria-labelledby="tasks" className="space-y-3">
+        <h2 id="tasks" className="text-lg font-medium">
+          Tasks ({tasks.length})
+        </h2>
+        {tasks.length === 0 && (
+          <p className="text-sm text-zinc-500">Không tìm thấy thư mục tasks/ hoặc thư mục trống.</p>
+        )}
+        <ul className="grid gap-3">
+          {tasks.map((t) => (
+            <li key={t.slug}>
+              <Link
+                href={`/projects/${project.id}/tasks/${encodeURIComponent(t.slug)}`}
+                className="block space-y-3 rounded-lg border border-zinc-200 p-4 hover:border-blue-500 dark:border-zinc-800"
+              >
+                <span className="font-mono text-sm font-medium">{t.slug}</span>
+                {t.hasTasks ? (
+                  <StatsBadges stats={t.stats} />
+                ) : (
+                  <p className="text-sm text-zinc-500">Chưa có todo.md</p>
                 )}
               </Link>
             </li>

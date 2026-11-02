@@ -16,20 +16,26 @@ Spec: `tasks/auto-task-watch/spec.md` · Plan: `tasks/auto-task-watch/plan.md`.
 | `telegram.ts` | `sendTelegram()`, `flushPendingNotifications()` | mạng |
 | `runner.ts` | 1 tick: scan → diff → queue → flush | fs + DB + mạng |
 | `start.ts` | `startWatch()`, `stopWatch()`, `watchStatus()` (singleton `globalThis.__ptmWatch`) | runtime |
+| `tasks.ts` | `parseTodo()`, `listTaskSlugs()`, `computeStats()`, `getTask()` | pure |
 
 ## Tick algorithm (`runTick`)
 
 1. `listProjects()`; với mỗi project: `statSync(path)` — folder biến mất → log `skippedPath`, không crash tick.
 2. `listSpecs(path)` với spec còn pending; spec nào không còn trong `specs/` → xoá snapshot (`forgetSpec`).
-3. Với mỗi spec:
+3. Với mỗi **spec**:
    - **chưa có snapshot** → `saveSnapshot(..., seeded: true)` im lặng (baseline, **không gửi** thông báo cho task đã `[x]` sẵn).
    - `mode === "idle"` (spec đã 100%) → chỉ `statSync`; nếu `mtime` không đổi thì bỏ qua (không đọc file); nếu đổi → về `mode: "full"`.
    - `mode === "full"` → đọc `tasks.md`, `computeStats`, `diffSnapshots`.
-4. `newlyDone` → gom lại thành **1 message `tasks_done` / project / tick**; mỗi spec vừa đạt 100% → **1 message `spec_completed` riêng** và snapshot chuyển `mode: "idle"`.
-5. `queued = 0` → update `last_checked_at` (idle spec giữ `last_changed_at`).
-6. Cuối tick: `flushPendingNotifications()` — message vừa queue được gửi ngay trong tick.
-7. Exception của 1 spec được catch (log `[watch] error <project>/<slug>`) và không ảnh hưởng spec khác.
-8. Guard: tick trước chưa xong → tick mới bị bỏ, log `[watch] tick-skipped`.
+4. Với mỗi **task** (trong `tasks/<slug>/todo.md`):
+   - **chưa có snapshot** → `saveTaskSnapshot(..., seeded: true)` im lặng.
+   - `mode === "idle"` (task đã 100%) → chỉ `statSync`; nếu `mtime` không đổi thì bỏ qua; nếu đổi → về `mode: "full"`.
+   - `mode === "full"` → đọc `todo.md`, `parseTodo`, `computeStats`, `diffSnapshots`.
+5. `newlyDone` (specs) → gom lại thành **1 message `tasks_done` / project / tick**; mỗi spec vừa đạt 100% → **1 message `spec_completed` riêng** và snapshot chuyển `mode: "idle"`.
+6. `newlyDone` (tasks) → gom lại thành **1 message `tasks_done` / project / tick**; mỗi task vừa đạt 100% → **1 message `spec_completed` riêng** (reusing same notification kind).
+7. `queued = 0` → update `last_checked_at` (idle spec/task giữ `last_changed_at`).
+8. Cuối tick: `flushPendingNotifications()` — message vừa queue được gửi ngay trong tick.
+9. Exception của 1 spec/task được catch (log `[watch] error <project>/<slug>`) và không ảnh hưởng item khác.
+10. Guard: tick trước chưa xong → tick mới bị bỏ, log `[watch] tick-skipped`.
 
 ## Invariants
 
@@ -56,7 +62,7 @@ Telegram: `POST https://api.telegram.org/bot<token>/sendMessage`, body `{ chat_i
 
 ## UI contract
 
-`/projects/[id]` hiển thị `AutoCheckLine` (tổng hợp tracked/active/idle) + `NotificationLog` (10 row gần nhất của project); `/projects/[id]/specs/[slug]` hiển thị `AutoCheckLine` riêng cho slug. Dữ liệu chỉ là ảnh chụp lúc render — UI **không auto-refresh**, muốn mới hơn phải bấm "↻ Làm mới".
+`/projects/[id]` hiển thị `AutoCheckLine` (tổng hợp tracked/active/idle) + `NotificationLog` (10 row gần nhất của project) + section "Tasks" (list các task slugs); `/projects/[id]/specs/[slug]` hiển thị `AutoCheckLine` riêng cho slug; `/projects/[id]/tasks/[slug]` hiển thị `AutoCheckLine` riêng cho task. Dữ liệu chỉ là ảnh chụp lúc render — UI **không auto-refresh**, muốn mới hơn phải bấm "↻ Làm mới".
 
 ## Test
 

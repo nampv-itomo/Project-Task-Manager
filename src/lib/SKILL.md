@@ -7,5 +7,5 @@
 - Read-only: the app never writes to a project's files.
 - `getSpec` only accepts slugs that exist in the `specs/` listing (no path traversal).
 - `getDb()` is exported so other modules (`lib/watch/*`) can use the same singleton connection.
-- Two extra tables own the auto-watch job: `spec_watch` (PK `project_id,slug`; last known completed task IDs + mode `full`/`idle`) and `notification_log` (persistent Telegram send queue + history). `deleteProject()` removes the project and its `spec_watch` rows in one transaction; `notification_log` rows are kept as history.
+- Three extra tables own the auto-watch job: `spec_watch` (PK `project_id,slug`; last known completed task IDs + mode `full`/`idle`), `task_watch` (PK `project_id,slug`; last known completed task items + mode `full`/`idle`), and `notification_log` (persistent Telegram send queue + history). `deleteProject()` removes the project and its `spec_watch`/`task_watch` rows in one transaction; `notification_log` rows are kept as history.
 - Watch job behavior/invariants live in `src/lib/watch/SKILL.md`.
