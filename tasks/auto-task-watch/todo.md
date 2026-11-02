@@ -2,22 +2,23 @@
 
 Spec: `tasks/auto-task-watch/spec.md` · Plan: `tasks/auto-task-watch/plan.md`
 
-## Task 1: Pure diff layer (`types.ts`, `diff.ts`) + unit test + test harness
+## Task 1 ✅: Pure diff layer (`types.ts`, `diff.ts`) + unit test + test harness
 
 **Description:** Nền tảng so sánh snapshot task đã xong. Không fs/db/network → test được ngay,
 không cần Telegram. Đồng thời dựng harness test 0-dependency cho cả feature.
 
-**Acceptance criteria:**
-- [ ] `src/lib/watch/types.ts` có `WatchMode`, `SpecSnapshot`, `WatchDiff`, `NotifyPayload` (type erasable, không enum).
-- [ ] `diffSnapshots(prevDone, currentDone)` trả `newlyDone` giữ thứ tự `currentDone`, `reopened` giữ thứ tự `prevDone`, immune reorder.
-- [ ] `tests/diff.test.ts` cover: normal, reopened-only, both, rỗng, 0 task, id lặp, reorder-only (=> newlyDone rỗng).
-- [ ] `package.json` có `"test": "node --test --conditions=react-server \"tests/**/*.test.ts\""`; không thêm dependency.
-- [ ] `tsconfig.json` có `allowImportingTsExtensions: true` (đã xin phép trong spec, Boundaries → Ask first).
+**Acceptance criteria:** ✅
+- [x] `src/lib/watch/types.ts` có `WatchMode`, `SpecSnapshot`, `WatchDiff` (`newlyDone`/`reopened`), `TaskCounts`, `NotifyPayload`, `NotifyStatus`, `NotificationRow` (type-only, không enum).
+- [x] `diffSnapshots(prevDone, currentDone)` trả `newlyDone` giữ thứ tự `currentDone`, `reopened` giữ thứ tự `prevDone`, immune reorder.
+- [x] `isSpecCompleted(prev, current)` — true chỉ khi pending giảm về 0 trên spec từng có pending.
+- [x] `tests/diff.test.ts` cover: normal, reopened-only, both, rỗng, reorder-only, id lặp, task biến mất hết, completed 4 case.
+- [x] `package.json` có `"test": "node --test --conditions=react-server \"tests/**/*.test.ts\""`; không thêm dependency.
+- [x] `tsconfig.json` có `allowImportingTsExtensions: true` (đã xin phép trong spec, Boundaries → Ask first).
 
-**Verification:**
-- [ ] `npm test` → all pass
-- [ ] `npm run lint` sạch
-- [ ] Manual: `grep -c "test(" tests/diff.test.ts` ≥ 6
+**Verification:** ✅
+- [x] `npm test` → 12 pass
+- [x] `npm run lint` sạch · `npx tsc --noEmit` sạch
+- [x] Manual: `grep -c "test(" tests/diff.test.ts` = 12
 
 **Dependencies:** None
 **Files likely touched:** `src/lib/watch/types.ts`, `src/lib/watch/diff.ts`, `tests/diff.test.ts`, `package.json`, `tsconfig.json`
@@ -25,44 +26,44 @@ không cần Telegram. Đồng thời dựng harness test 0-dependency cho cả 
 
 ---
 
-## Task 2: Message formatting layer (`format.ts`) + unit test
+## Task 2 ✅: Message formatting layer (`format.ts`) + unit test
 
 **Description:** Biến diff thành text message Telegram (gộp theo project, bullet theo spec, cắt
 ≤3500 ký tự) và message `spec_completed`. Pure → assert được định dạng và giới hạn độ dài.
 
-**Acceptance criteria:**
-- [ ] `buildDoneMessage(projectName, stats, perSpec)` trả đúng format spec (`ProjA · 12/20 task` + `• slug: T014, T015`).
-- [ ] `buildCompletedMessage(projectName, slug, total)` trả dòng `✅ ProjA / slug — 20/20 task, spec hoàn thành`.
-- [ ] Message >3500 ký tự được tách thành nhiều message, không cắt giữa một task id.
-- [ ] `tests/format.test.ts` assert: 1 spec, nhiều spec, 1 project nhiều spec + 1 completed, case 5000 ký tự.
+**Acceptance criteria:** ✅
+- [x] `buildDoneMessages(projectName, stats, deltas)` trả đúng format spec (`ProjA · 12/20 task` + `• slug: T014, T015`).
+- [x] `buildCompletedMessage(projectName, slug, total)` trả dòng `✅ ProjA / slug — 20/20 task, spec hoàn thành`.
+- [x] Message >3500 ký tự được tách thành nhiều message; spec quá nhiều id được tách nhiều bullet, không cắt giữa task id.
+- [x] `tests/format.test.ts` assert: 1 spec, nhiều spec, rỗng, split nhiều spec, split 1 spec 600 id, completed.
 
-**Verification:**
-- [ ] `npm test` pass
-- [ ] Manual: in ra message mẫu, eyeball khớp mẫu trong `tasks/auto-task-watch/spec.md`
+**Verification:** ✅
+- [x] `npm test` pass (18/18)
+- [x] Manual: message mẫu khớp mẫu trong `tasks/auto-task-watch/spec.md` (assert trong test)
 
-**Dependencies:** Task 1
+**Dependencies:** Task 1 ✅
 **Files likely touched:** `src/lib/watch/format.ts`, `tests/format.test.ts`
 **Estimated scope:** Small
 
 ---
 
-## Task 3: SQLite schema + `getDb()` export
+## Task 3 ✅: SQLite schema + `getDb()` export
 
 **Description:** Thêm 2 bảng `spec_watch`, `notification_log` vào `db.ts` (idempotent, không
 migration tool) và cho phép module khác dùng cùng 1 connection.
 
-**Acceptance criteria:**
-- [ ] `getDb()` được export từ `src/lib/db.ts` (vẫn `server-only`, vẫn singleton `globalForDb`).
-- [ ] 2 bảng đúng DDL trong spec, `CREATE TABLE IF NOT EXISTS`, chạy lại nhiều lần không lỗi.
-- [ ] `deleteProject(id)` xoá kèm `spec_watch` của project đó (1 transaction).
-- [ ] Không đổi schema bảng `projects`, không xoá dữ liệu cũ.
+**Acceptance criteria:** ✅
+- [x] `getDb()` được export từ `src/lib/db.ts` (vẫn `server-only`, vẫn singleton `globalForDb`).
+- [x] 2 bảng đúng DDL trong spec, `CREATE TABLE IF NOT EXISTS`, chạy lại nhiều lần không lỗi.
+- [x] `deleteProject(id)` xoá kèm `spec_watch` của project đó (1 transaction).
+- [x] Không đổi schema bảng `projects`, không xoá dữ liệu cũ.
 
-**Verification:**
-- [ ] `sqlite3 data/projects.db ".tables"` → có `spec_watch`, `notification_log`
-- [ ] `sqlite3 data/projects.db "select sql from sqlite_master where name in ('spec_watch','notification_log')"` khớp DDL
-- [ ] `npm run build` pass · `npm test` pass
+**Verification:** ✅
+- [x] `sqlite3 data/projects.db ".tables"` → `notification_log  projects  spec_watch`
+- [x] Test dòng `(project_id, slug)` bị từ chối (PRIMARY KEY) — `tests/db.test.ts`
+- [x] `npm run build` pass · `npm test` pass (22/22)
 
-**Dependencies:** None (parallel-safe với Task 1–2)
+**Dependencies:** None (parallel-safe với Task 1–2) ✅
 **Files likely touched:** `src/lib/db.ts`
 **Estimated scope:** Small
 
@@ -234,11 +235,11 @@ hot-reload nhân đôi, `unref()` để không giữ process.
 
 ---
 
-## Checkpoint: Foundation (sau Task 1–3)
+## Checkpoint: Foundation (sau Task 1–3) ✅
 
-- [ ] `npm test` pass
-- [ ] `npm run build` pass
-- [ ] `spec_watch` + `notification_log` tồn tại trong `data/projects.db`
+- [x] `npm test` pass (22/22)
+- [x] `npm run build` pass
+- [x] `spec_watch` + `notification_log` tồn tại trong `data/projects.db`
 - [ ] Review với Nam trước khi đi tiếp
 
 ## Checkpoint: E2E (sau Task 7)
