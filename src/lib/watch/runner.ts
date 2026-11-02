@@ -1,0 +1,238 @@
+import "server-only";
+import fs from "node:fs";
+import path from "node:path";
+import { listProjects } from "../db.ts";
+import { computeStats, listSpecSlugs, parseTasks } from "../specs.ts";
+import { diffSnapshots, isSpecCompleted } from "./diff.ts";
+import { buildCompletedMessage, buildDoneMessages, type SpecDelta } from "./format.ts";
+import {
+  NOTIFICATION_HISTORY,
+  enqueueNotification,
+  getSnapshot,
+  pruneNotifications,
+  saveSnapshot,
+} from "./store.ts";
+import { flushPendingNotifications } from "./telegram.ts";
+import type { TaskCounts, WatchMode } from "./types.ts";
+
+export type ProjectReport = {
+  projectId: number;
+  projectName: string;
+  specs: number;
+  /** Specs still holding pending tasks: read and diffed on this tick. */
+  active: number;
+  /** Specs at zero pending: only their mtime was checked. */
+  idle: number;
+  newlyDone: number;
+  queued: number;
+  /** The project folder disappeared; nothing was read. */
+  skippedPath: boolean;
+};
+
+export type TickReport = {
+  /** True when the previous tick was still running and this one was dropped. */
+  skipped: boolean;
+  projects: ProjectReport[];
+  sent: number;
+  failed: number;
+  skippedNoConfig: number;
+};
+
+/** Invariant: one tick at a time per process (SQLite + send queue are shared). */
+let ticking = false;
+
+/** SQLite-compatible UTC timestamp; the UI renders it in UTC+7. */
+function nowSql(): string {
+  return new Date().toISOString().replace("T", " ").slice(0, 19);
+}
+
+type SpecOutcome = {
+  counts: TaskCounts;
+  newlyDone: string[];
+  completed: boolean;
+  mode: WatchMode;
+};
+
+/**
+ * Read (or skip) one spec and persist its new snapshot.
+ * Invariant: a spec with zero pending tasks is only stat()'ed — its tasks.md is
+ * re-read only when mtime changed, which is what keeps a big watch list cheap.
+ */
+function inspectSpec(
+  projectId: number,
+  projectPath: string,
+  slug: string,
+  checkedAt: string,
+): SpecOutcome {
+  const tasksPath = path.join(projectPath, "specs", slug, "tasks.md");
+  let mtimeMs: number | null = null;
+  try {
+    mtimeMs = fs.statSync(tasksPath).mtimeMs;
+  } catch {
+    mtimeMs = null; // no tasks.md: the spec counts as empty
+  }
+
+  const snapshot = getSnapshot(projectId, slug);
+
+  if (snapshot && snapshot.pending === 0 && snapshot.file_mtime_ms === mtimeMs) {
+    saveSnapshot({ ...snapshot, last_checked_at: checkedAt });
+    return {
+      counts: { total: snapshot.total, done: snapshot.done, pending: snapshot.pending },
+      newlyDone: [],
+      completed: false,
+      mode: "idle",
+    };
+  }
+
+  const markdown = mtimeMs === null ? null : fs.readFileSync(tasksPath, "utf8");
+  const tasks = markdown === null ? [] : parseTasks(markdown).flatMap((phase) => phase.tasks);
+  const counts = computeStats(tasks);
+  const currentDone = tasks.filter((task) => task.done).map((task) => task.id);
+  const mode: WatchMode = counts.pending > 0 ? "full" : "idle";
+
+  // First sight of a spec: seed silently, otherwise a project that already has
+  // completed tasks would notify about all of them at once.
+  if (!snapshot) {
+    saveSnapshot({
+      project_id: projectId,
+      slug,
+      mode,
+      done_ids: currentDone,
+      ...counts,
+      seeded: true,
+      file_mtime_ms: mtimeMs,
+      last_checked_at: checkedAt,
+      last_changed_at: null,
+    });
+    return { counts, newlyDone: [], completed: false, mode };
+  }
+
+  const diff = diffSnapshots(snapshot.done_ids, currentDone);
+  const completed = isSpecCompleted(
+    { total: snapshot.total, done: snapshot.done, pending: snapshot.pending },
+    counts,
+  );
+  const changed =
+    snapshot.file_mtime_ms !== mtimeMs || diff.newlyDone.length > 0 || diff.reopened.length > 0;
+
+  saveSnapshot({
+    project_id: projectId,
+    slug,
+    mode,
+    done_ids: currentDone,
+    ...counts,
+    seeded: true,
+    file_mtime_ms: mtimeMs,
+    last_checked_at: checkedAt,
+    last_changed_at: changed ? checkedAt : snapshot.last_changed_at,
+  });
+
+  return { counts, newlyDone: diff.newlyDone, completed, mode };
+}
+
+function watchProject(project: { id: number; name: string; path: string }, checkedAt: string): ProjectReport {
+  const report: ProjectReport = {
+    projectId: project.id,
+    projectName: project.name,
+    specs: 0,
+    active: 0,
+    idle: 0,
+    newlyDone: 0,
+    queued: 0,
+    skippedPath: false,
+  };
+
+  if (!fs.existsSync(project.path)) {
+    report.skippedPath = true;
+    console.warn(`[watch] ${project.name}: skipped, path not found (${project.path})`);
+    return report;
+  }
+
+  const slugs = listSpecSlugs(project.path);
+  report.specs = slugs.length;
+
+  const deltas: SpecDelta[] = [];
+  const completedSpecs: { slug: string; total: number }[] = [];
+  const totals: TaskCounts = { total: 0, done: 0, pending: 0 };
+
+  for (const slug of slugs) {
+    try {
+      const outcome = inspectSpec(project.id, project.path, slug, checkedAt);
+      totals.total += outcome.counts.total;
+      totals.done += outcome.counts.done;
+      totals.pending += outcome.counts.pending;
+      if (outcome.mode === "full") report.active += 1;
+      else report.idle += 1;
+      if (outcome.newlyDone.length > 0) {
+        deltas.push({ slug, taskIds: outcome.newlyDone });
+        report.newlyDone += outcome.newlyDone.length;
+      }
+      if (outcome.completed) completedSpecs.push({ slug, total: outcome.counts.total });
+    } catch (error) {
+      // One broken spec must not cost the rest of the project.
+      console.warn(`[watch] ${project.name}/${slug}: ${error instanceof Error ? error.message : error}`);
+    }
+  }
+
+  // Every newly done task of this tick goes into one message per project.
+  if (deltas.length > 0) {
+    const taskIds = deltas.flatMap((delta) => delta.taskIds);
+    const slug = deltas.length === 1 ? deltas[0].slug : null;
+    for (const message of buildDoneMessages(project.name, totals, deltas)) {
+      enqueueNotification({
+        projectId: project.id,
+        projectName: project.name,
+        slug,
+        kind: "tasks_done",
+        taskIds,
+        message,
+      });
+      report.queued += 1;
+    }
+  }
+
+  for (const spec of completedSpecs) {
+    enqueueNotification({
+      projectId: project.id,
+      projectName: project.name,
+      slug: spec.slug,
+      kind: "spec_completed",
+      taskIds: [],
+      message: buildCompletedMessage(project.name, spec.slug, spec.total),
+    });
+    report.queued += 1;
+  }
+
+  console.log(
+    `[watch] ${project.name} specs=${report.specs} active=${report.active} idle=${report.idle} newlyDone=${report.newlyDone} queued=${report.queued}`,
+  );
+  return report;
+}
+
+/** One full pass: retry the send queue, re-read active specs, enqueue new messages. */
+export async function runWatchTick(): Promise<TickReport> {
+  if (ticking) {
+    console.warn("[watch] tick-skipped: previous tick still running");
+    return { skipped: true, projects: [], sent: 0, failed: 0, skippedNoConfig: 0 };
+  }
+
+  ticking = true;
+  const checkedAt = nowSql();
+  try {
+    const projects = listProjects().map((project) => watchProject(project, checkedAt));
+    const sent = await flushPendingNotifications();
+    pruneNotifications(NOTIFICATION_HISTORY);
+    console.log(
+      `[watch] tick done sent=${sent.sent} failed=${sent.failed} skippedNoConfig=${sent.skipped}`,
+    );
+    return {
+      skipped: false,
+      projects,
+      sent: sent.sent,
+      failed: sent.failed,
+      skippedNoConfig: sent.skipped,
+    };
+  } finally {
+    ticking = false;
+  }
+}
