@@ -69,102 +69,109 @@ migration tool) và cho phép module khác dùng cùng 1 connection.
 
 ---
 
-## Task 4: Persistence layer (`store.ts`)
+## Task 4 ✅: Persistence layer (`store.ts`)
 
 **Description:** CRUD snapshot per `(project_id, slug)` + hàng đợi notification + prune. Đây là
 chỗ duy nhất chạm SQLite của feature.
 
-**Acceptance criteria:**
-- [ ] `getSnapshot(projectId, slug)`, `upsertSnapshot(...)`, `seedSnapshot(...)` (baseline, `seeded=1`).
-- [ ] `setMode(projectId, slug, mode)` + lưu `file_mtime_ms`, `last_checked_at`, `last_changed_at`.
-- [ ] `enqueueNotification(payload)` tạo row `status='pending'`; `takePendingNotifications(limit)`;
-  `markSent(id)`; `markError(id, message)`; `markSkipped(id)`.
-- [ ] `recentNotifications(projectId, limit=10)` cho UI; `pruneNotifications(keep=200)` mỗi tick.
-- [ ] `done_ids` serialize/deserialize JSON an toàn (corrupt row → coi như rỗng + log warn).
+**Acceptance criteria:** ✅
+- [x] `getSnapshot(projectId, slug)` + `saveSnapshot(snapshot)` upsert theo `(project_id, slug)`.
+  *Deviation:* `upsertSnapshot`/`seedSnapshot`/`setMode` gộp thành **1 hàm `saveSnapshot`** — seed
+  chỉ là `saveSnapshot` với `seeded: true`, mode nằm trong snapshot → ít API hơn, cùng hành vi.
+- [x] Lưu `mode`, `file_mtime_ms`, `last_checked_at`, `last_changed_at`.
+- [x] `enqueueNotification(payload)` → row `status='pending'`; `takePendingNotifications(limit)` chỉ
+  trả row `pending` **hoặc** `error` với `attempts < MAX_SEND_ATTEMPTS (5)`.
+- [x] `markSent(id)`; `markFailed(id, message)` (*deviation:* tên là `markFailed`, không `markError`);
+  `markSkipped(id)` → `skipped_no_config`, terminal, không đếm attempts.
+- [x] `recentNotifications(projectId, limit=10)` newest-first; `pruneNotifications(NOTIFICATION_HISTORY=200)`.
+- [x] `done_ids` JSON an toàn: row corrupt → `[]` + `console.warn`.
 
-**Verification:**
-- [ ] `npm test` pass (store được import qua `--conditions=react-server` trong test kế tiếp hoặc smoke test)
-- [ ] Manual smoke: chạy 1 script tạm import `store.ts` bằng `node --test --conditions=react-server`, upsert + read lại khớp
-- [ ] `npm run build` pass
+**Verification:** ✅
+- [x] `tests/store.test.ts` 11 case (RED → GREEN) · `npm test` 33/33
+- [x] `npm run lint` + `npx tsc --noEmit` sạch · `npm run build` pass
+- [x] Commit `843ff65`
 
-**Dependencies:** Task 1, Task 3
+**Dependencies:** Task 1, Task 3 ✅
 **Files likely touched:** `src/lib/watch/store.ts`
 **Estimated scope:** Medium
 
 ---
 
-## Task 5: Telegram sender + pending flush (`telegram.ts`)
+## Task 5 ✅: Telegram sender + pending flush (`telegram.ts`)
 
 **Description:** Gửi message qua Bot API bằng global `fetch`, kèm flush hàng đợi `pending` với
 retry có cap. Không log token.
 
-**Acceptance criteria:**
-- [ ] `telegramConfig()` đọc `TELEGRAM_BOT_TOKEN`/`TELEGRAM_CHAT_ID` **trong hàm** (không top-level).
-- [ ] `sendTelegram(text)` → `POST https://api.telegram.org/bot<token>/sendMessage`, body
-  `{chat_id, text, disable_web_page_preview: true}`, timeout 10s, không `parse_mode`.
-- [ ] `flushPendingNotifications()` duyệt row `pending` (`attempts < 5`): thiếu creds → `skipped_no_config`
-  (không đếm attempts); lỗi HTTP/network/`ok:false` → `status='error'`, `attempts++`, `last_error` =
-  mô tả lỗi **không chứa token/chat id**; thành công → `sent`.
-- [ ] Không bao giờ ném exception ra ngoài `flushPendingNotifications` (tick phải sống).
+**Acceptance criteria:** ✅
+- [x] `telegramConfig()` đọc env **trong hàm** (server boot không crash khi thiếu creds).
+- [x] `sendTelegram(text)` → `POST .../sendMessage`, body `{chat_id, text, disable_web_page_preview: true}`,
+  `AbortSignal.timeout(10_000)`, không `parse_mode`.
+- [x] `flushPendingNotifications(FLUSH_BATCH=10)`: thiếu creds → `skipped_no_config` (attempts giữ 0);
+  HTTP lỗi/network/`ok:false` → `error` + `attempts++` + `last_error`; `ok` → `sent`.
+- [x] Không ném exception ra ngoài flush. *Deviation:* `last_error` được **redact** token/chat id.
+- [x] Test stub `globalThis.fetch` thay vì manual smoke (máy dev **không có** `.env.local` → chưa có creds thật).
 
-**Verification:**
-- [ ] Manual, có creds: `TELEGRAM_BOT_TOKEN=... TELEGRAM_CHAT_ID=... node --test --conditions=react-server tests/smoke-telegram.test.ts` → nhận tin nhắn trên Telegram, row thành `sent`
-- [ ] Manual, sai token: row thành `error` + `last_error` không lộ token
-- [ ] `npm run lint` sạch
+**Verification:** ✅
+- [x] `tests/telegram.test.ts` 9 case · `npm test` 42/42 · lint + tsc sạch
+- [x] Test assert error không chứa token
+- [x] Commit `34c44d3`
+- [ ] **Chờ Nam**: manual smoke với creds thật (cần `.env.local`)
 
-**Dependencies:** Task 4
+**Dependencies:** Task 4 ✅
 **Files likely touched:** `src/lib/watch/telegram.ts`
 **Estimated scope:** Small–Medium
 
 ---
 
-## Task 6: Tick runner (`runner.ts`)
+## Task 6 ✅: Tick runner (`runner.ts`)
 
 **Description:** Toàn bộ business logic 1 tick: scan project → chọn mode `full`/`idle` → đọc file →
 diff → enqueue message → flush → cập nhật snapshot. Overlap-guard.
 
-**Acceptance criteria:**
-- [ ] Project path không tồn tại → skip + log warn, không crash tick.
-- [ ] Chưa có snapshot row → đọc full, **seed baseline im lặng** (`seeded=1`), 0 notification.
-- [ ] `pending > 0` → đọc full. `pending == 0` → chỉ `statSync`; `mtime` không đổi → không đọc file; đổi → re-arm `full`.
-- [ ] `newlyDone` rỗng và không completed → không enqueue (reopened chỉ cập nhật snapshot, im lặng).
-- [ ] Gom mọi `newlyDone` trong tick theo project → 1 message `tasks_done`; mỗi spec completed → 1 message `spec_completed`.
-- [ ] Spec completed → snapshot `mode='idle'`. Kết quả seed baseline không được tính là newlyDone.
-- [ ] In-flight guard: tick đang chạy → tick kế tiếp bị bỏ + log `tick-skipped`.
-- [ ] Mỗi tick in 1 dòng: `[watch] <project> specs=… active=… idle=… newlyDone=… sent=…`
-- [ ] Exception per-spec được catch: spec lỗi không làm hỏng các spec còn lại.
+**Acceptance criteria:** ✅
+- [x] Project path không tồn tại → `skippedPath` + `console.warn`, tick không crash.
+- [x] Chưa có snapshot → đọc full, **seed baseline im lặng** (`seeded=1`), 0 notification.
+- [x] `pending > 0` → đọc full. `pending == 0` → chỉ `statSync`; mtime không đổi → không đọc file; đổi → re-arm `full`.
+- [x] `newlyDone` rỗng & không completed → không enqueue. Reopened chỉ cập nhật snapshot (im lặng).
+- [x] Gom `newlyDone` theo project → message `tasks_done` (split >3500 ký tự); mỗi spec completed → 1 `spec_completed`.
+- [x] Spec completed → `mode='idle'`. Seed không tính là newlyDone.
+- [x] In-flight guard: tick đang chạy → tick sau bỏ + log `tick-skipped`.
+- [x] Exception per-spec được catch, không làm hỏng spec khác.
+- [x] Log mỗi project 1 dòng + 1 dòng tổng. *Deviation:* dòng per-project dùng `queued=`
+  (`[watch] <project> specs=… active=… idle=… newlyDone=… queued=…`) và flush nằm ở **cuối tick**
+  với dòng `[watch] tick done sent=… failed=… skippedNoConfig=…` → message mới gửi ngay trong tick.
 
-**Verification:**
-- [ ] `npm test` pass
-- [ ] Manual: gọi `runWatchTick()` 2 lần liên tiếp trong test/script — lần 1 seed (0 message), lần 2 không đổi (0 message)
-- [ ] `npm run build` pass
+**Verification:** ✅
+- [x] `tests/runner.test.ts` 12 case trên thư mục project thật (temp dir) · `npm test` 53/53
+- [x] Cover: seed im lặng, batch 1 message/2 spec, 2 spec completed = 1 batch + 2 message,
+  idle gate (mtime đổi/new), reopened im lặng, path mất, thiếu `tasks.md`, overlap guard, `sent`
+- [x] `npm run lint` + `npx tsc --noEmit` sạch · `npm run build` pass · commit `48fd6ba`
 
-**Dependencies:** Task 1, 2, 3, 4, 5
+**Dependencies:** Task 1, 2, 3, 4, 5 ✅
 **Files likely touched:** `src/lib/watch/runner.ts`
 **Estimated scope:** Medium
 
 ---
 
-## Task 7: Start job in Next (`start.ts` + `src/instrumentation.ts`)
+## Task 7 ✅: Start job in Next (`start.ts` + `src/instrumentation.ts`)
 
 **Description:** Bật `setInterval` 60s khi server khởi tạo, nodejs-runtime-only, singleton chống
 hot-reload nhân đôi, `unref()` để không giữ process.
 
-**Acceptance criteria:**
-- [ ] `src/instrumentation.ts` export `register()`, gate `process.env.NEXT_RUNTIME === "nodejs"`, dynamic `await import()` (theo Next docs).
-- [ ] Singleton `globalThis.__ptmWatch`: nếu đã có interval → `clearInterval` cái cũ rồi tạo mới (dev hot-reload an toàn).
-- [ ] `TASK_WATCH_ENABLED=0` → không start. `TASK_WATCH_INTERVAL_MS` override chu kỳ, default 60000, floor 5000.
-- [ ] Interval dùng `.unref()`; tick đầu chạy ngay khi start (không chờ 60s).
-- [ ] `pm2 reload` → job tự start lại, không gửi lại notification cũ.
+**Acceptance criteria:** ✅
+- [x] `src/instrumentation.ts` export `register()`, gate `NEXT_RUNTIME === "nodejs"`, dynamic `await import()`.
+- [x] Singleton `globalThis.__ptmWatch`: đã có interval → `startWatch()` trả `false`, **không tạo** interval thứ hai.
+  *Deviation:* thay vì `clearInterval` cái cũ rồi tạo mới, job **giữ interval đang chạy** (idempotent).
+- [x] `TASK_WATCH_ENABLED=0` → không start. `TASK_WATCH_INTERVAL_MS` override, default 60000, floor 5000.
+- [x] `interval.unref()`; tick đầu chạy ngay khi start.
+- [x] `stopWatch()` + `watchStatus()` cho test/UI. Tick lỗi → `console.error`, interval vẫn chạy.
 
-**Verification:**
-- [ ] Manual `npm run dev`: thấy log `[watch] …` ngay khi boot và lặp lại mỗi ~60s; reload file → **không** xuất hiện 2 interval
-- [ ] E2E: `- [ ] T001` → `- [x] T001` trong `tasks.md` của spec đang pending → Telegram nhận message ≤65s
-- [ ] E2E baseline: thêm project mới có sẵn task `[x]` → tick đầu 0 message
-- [ ] E2E idle: spec đạt 100% → message `spec_completed`, `sqlite3 data/projects.db "select slug,mode from spec_watch"` hiện `idle`; thêm task mới vào file → tick sau re-arm `full`
-- [ ] `npm run build` pass
+**Verification:** ✅
+- [x] `tests/watch-start.test.ts` 8 case · `npm test` 61/61 · lint + tsc + build sạch · commit `c4d6283`
+- [x] Manual `next start -p 3699` (interval 10s): `[watch] started interval=10000ms telegram=missing …`, log lặp đúng chu kỳ
+- [ ] **Chờ Nam**: `pm2 reload` trên instance 3600 (đang chạy build cũ)
 
-**Dependencies:** Task 6
+**Dependencies:** Task 6 ✅
 **Files likely touched:** `src/lib/watch/start.ts`, `src/instrumentation.ts`
 **Estimated scope:** Medium
 
@@ -240,15 +247,22 @@ hot-reload nhân đôi, `unref()` để không giữ process.
 - [x] `npm test` pass (22/22)
 - [x] `npm run build` pass
 - [x] `spec_watch` + `notification_log` tồn tại trong `data/projects.db`
-- [ ] Review với Nam trước khi đi tiếp
+- [x] Review với Nam → Nam duyệt làm tiếp Phase 2
 
-## Checkpoint: E2E (sau Task 7)
+## Checkpoint: E2E (sau Task 7) ✅ *(không có Telegram creds)*
 
-- [ ] Log tick mỗi 60s ±5s
-- [ ] Task `[x]` → Telegram ≤65s, 1 message gộp/project
-- [ ] Restart server không gửi lại notification cũ
-- [ ] Baseline project có sẵn `[x]` → 0 message
-- [ ] Review với Nam trước khi làm UI
+Chạy thật: `next start -p 3699` + `TASK_WATCH_INTERVAL_MS=10000`, fixture `ProjE2E` (4 task),
+theo dõi thêm 3 project thật (read-only).
+
+- [x] Log tick đúng chu kỳ 10s, mỗi project 1 dòng + `tick done`
+- [x] Baseline seed im lặng trên data thật: 3 project có sẵn 93/56/24 task `[x]` → tick đầu `newlyDone=0 queued=0`
+- [x] `[ ] T002` → `[x] T002` → tick kế: `newlyDone=1 queued=1`, row `tasks_done` `ProjE2E · 2/4 task • spec-01-us1: T002`
+- [x] Spec đạt 100% → row `spec_completed` + `spec_watch.mode = idle` (`active=0 idle=1`)
+- [x] Restart server → 0 notification mới (hàng đợi + snapshot bền trên SQLite)
+- [x] Reopen `[x] → [ ]` → `newlyDone=0 queued=0`, mode về `full`, 0 row mới
+- [~] Telegram ≤65s: **chưa verify được** — máy dev không có `.env.local`, row ở status `skipped_no_config`
+- [x] Dọn fixture: xoá project `ProjE2E` + row liên quan (DB hiện 3 project, 0 notification, 4 snapshot)
+- [ ] Review với Nam trước khi làm UI (cần quyết `TELEGRAM_BOT_TOKEN`/`TELEGRAM_CHAT_ID`)
 
 ## Checkpoint: Complete (sau Task 10)
 
