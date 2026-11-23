@@ -43,16 +43,17 @@ export default async function SpecPage({
   const base = `/projects/${project.id}/specs/${encodeURIComponent(slug)}`;
 
   const phases = spec.phases
-    .map((p) => ({
-      ...p,
-      tasks: p.tasks.filter(
+    .map((phase) => ({
+      phase,
+      stats: computeStats(phase.tasks),
+      tasks: phase.tasks.filter(
         (t) => filter === "all" || (filter === "done") === t.done,
       ),
     }))
     .filter((p) => p.tasks.length > 0);
 
   return (
-    <main className="mx-auto w-full max-w-4xl space-y-6">
+    <main className="mx-auto w-full space-y-6">
       <nav className="text-sm">
         <Link
           href={`/projects/${project.id}`}
@@ -97,54 +98,79 @@ export default async function SpecPage({
           {phases.length === 0 && (
             <p className="text-sm text-zinc-500">Không có task nào khớp bộ lọc.</p>
           )}
-          {phases.map((phase) => (
+          {phases.map(({ phase, stats, tasks }) => (
             <section key={phase.title} className="space-y-2">
-              <h2 className="text-base font-semibold">{phase.title}</h2>
-              <ul className="divide-y divide-zinc-200 rounded-lg border border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
-                {phase.tasks.map((t) => (
-                  <li key={t.id} className="flex gap-3 p-3">
-                    <span
-                      className={`mt-0.5 inline-flex size-5 shrink-0 items-center justify-center rounded border text-xs ${
-                        t.done
-                          ? "border-emerald-600 bg-emerald-600 text-white"
-                          : "border-zinc-400"
-                      }`}
-                      role="img"
-                      aria-label={t.done ? "Đã xong" : "Chưa xong"}
+              <details className="rounded-lg border border-zinc-200 dark:border-zinc-800">
+                <summary className="flex cursor-pointer items-center justify-between gap-3 list-none px-3 py-2 text-base font-semibold">
+                  <span className="flex items-center gap-2">
+                    <svg
+                      className="size-3 shrink-0 text-zinc-400 transition-transform [open]:rotate-90"
+                      viewBox="0 0 16 16"
+                      fill="none"
+                      aria-hidden="true"
                     >
-                      {t.done ? "✓" : ""}
-                    </span>
-                    <div className="min-w-0 space-y-1">
-                      <p className={`text-sm ${t.done ? "text-zinc-500" : ""}`}>
-                        <span className="mr-2 font-mono font-medium">{t.id}</span>
-                        {t.tags.map((tag) => (
-                          <span
-                            key={tag}
-                            className="mr-1 rounded bg-zinc-100 px-1.5 py-0.5 text-xs dark:bg-zinc-800"
-                          >
-                            {tag}
-                          </span>
-                        ))}
-                        <span className="break-words">{t.title}</span>
-                      </p>
-                      {t.notes.length > 0 && (
-                        <details className="text-xs text-zinc-500">
-                          <summary className="cursor-pointer">
-                            Ghi chú ({t.notes.length})
-                          </summary>
-                          <ul className="mt-1 list-disc space-y-1 pl-4">
-                            {t.notes.map((n, i) => (
-                              <li key={i} className="break-words">
-                                {n}
-                              </li>
-                            ))}
-                          </ul>
-                        </details>
-                      )}
-                    </div>
-                  </li>
-                ))}
-              </ul>
+                      <path
+                        d="M6 4l4 4-4 4"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                    {phase.title}
+                  </span>
+                  <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+                    {filter === "pending"
+                      ? `${stats.pending}/${stats.total}`
+                      : `${stats.done}/${stats.total}`}
+                  </span>
+                </summary>
+                <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
+                  {tasks.map((t) => (
+                    <li key={t.id} className="flex gap-3 p-3">
+                      <span
+                        className={`mt-0.5 inline-flex size-5 shrink-0 items-center justify-center rounded border text-xs ${
+                          t.done
+                            ? "border-emerald-600 bg-emerald-600 text-white"
+                            : "border-zinc-400"
+                        }`}
+                        role="img"
+                        aria-label={t.done ? "Đã xong" : "Chưa xong"}
+                      >
+                        {t.done ? "✓" : ""}
+                      </span>
+                      <div className="min-w-0 space-y-1">
+                        <p className={`text-sm ${t.done ? "text-zinc-500" : ""}`}>
+                          <span className="mr-2 font-mono font-medium">{t.id}</span>
+                          {t.tags.map((tag) => (
+                            <span
+                              key={tag}
+                              className="mr-1 rounded bg-zinc-100 px-1.5 py-0.5 text-xs dark:bg-zinc-800"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                          <span className="break-words">{t.title}</span>
+                        </p>
+                        {t.notes.length > 0 && (
+                          <details className="text-xs text-zinc-500">
+                            <summary className="cursor-pointer">
+                              Ghi chú ({t.notes.length})
+                            </summary>
+                            <ul className="mt-1 list-disc space-y-1 pl-4">
+                              {t.notes.map((n, i) => (
+                                <li key={i} className="break-words">
+                                  {n}
+                                </li>
+                              ))}
+                            </ul>
+                          </details>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </details>
             </section>
           ))}
         </>

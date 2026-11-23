@@ -132,14 +132,20 @@ export function NotificationLog({
   rows,
   id = "notifications",
   heading = "Thông báo gần đây",
+  className,
+  listClassName,
 }: {
   rows: NotificationRow[];
   id?: string;
   heading?: string;
+  /** Extra classes on the wrapping <section> (e.g. flex column for fixed-height pages). */
+  className?: string;
+  /** Extra classes on the <ul> (e.g. overflow-y-auto to scroll within its own region). */
+  listClassName?: string;
 }) {
   return (
-    <section aria-labelledby={id} className="space-y-2">
-      <h2 id={id} className="text-lg font-medium">
+    <section aria-labelledby={id} className={className ?? "space-y-2"}>
+      <h2 id={id} className="shrink-0 text-lg font-medium">
         {heading} ({rows.length})
       </h2>
       {rows.length === 0 ? (
@@ -147,7 +153,7 @@ export function NotificationLog({
       ) : (
         <ul
           role="list"
-          className="divide-y divide-zinc-200 rounded-lg border border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800"
+          className={`divide-y divide-zinc-200 rounded-lg border border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800 ${listClassName ?? ""}`}
         >
           {rows.map((row) => (
             <li key={row.id} className="grid gap-2 p-3 md:grid-cols-[7.5rem_1fr_auto] md:items-start md:gap-3">

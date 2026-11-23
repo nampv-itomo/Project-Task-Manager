@@ -26,6 +26,35 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+/* Project-detail dashboard: a fixed-height viewport-filling region.
+   Matches the shell's top+bottom padding: pt-16 (4rem) + pb-10 (2.5rem) on
+   mobile, md:pt-10 (2.5rem) + pb-10 (2.5rem) from the md breakpoint (48rem).
+   ThemeToggle is position:fixed so it does not consume layout height. */
+:root {
+  --content-h: calc(100dvh - 6.5rem);
+}
+@media (min-width: 48rem) {
+  :root {
+    --content-h: calc(100dvh - 5rem);
+  }
+}
+
+/* Spec-row progress fill (project detail): the fill's WIDTH encodes % tasks
+   done, and --fill-hue ramps purple (0%) -> green (100%). Width + the done/total
+   text are always present, so colour is never the only channel. Lightness is
+   theme-specific so the row text keeps AA contrast over the fill: a light
+   pastel in light mode (dark text), a dark tint in dark mode (light text). */
+:root {
+  --spec-fill-s: 65%;
+  --spec-fill-l: 86%;
+}
+.dark {
+  --spec-fill-l: 24%;
+}
+.spec-fill {
+  background-color: hsl(var(--fill-hue, 270) var(--spec-fill-s) var(--spec-fill-l));
+}
+
 /* Sidebar: collapsed state lives on <html> so it is restored before first paint. */
 :root {
   --sidebar-w: 15rem;

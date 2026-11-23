@@ -29,7 +29,7 @@ export default function Home() {
   ];
 
   return (
-    <main className="mx-auto w-full max-w-4xl space-y-6">
+    <main className="mx-auto w-full space-y-6">
       <header>
         <h1 className="text-2xl font-semibold">Tổng quan</h1>
         <p className="text-sm text-zinc-500">

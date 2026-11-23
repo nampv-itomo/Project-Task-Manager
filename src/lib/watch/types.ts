@@ -7,23 +7,6 @@
 /** `full` = parse tasks.md and diff every tick. `idle` = only stat tasks.md mtime. */
 export type WatchMode = "full" | "idle";
 
-/** Last known state of one task (`<project>/tasks/<slug>/todo.md`). */
-export type TaskSnapshot = {
-  project_id: number;
-  slug: string;
-  mode: WatchMode;
-  /** Task item ids that were `[x]` at the time of the snapshot. */
-  done_items: string[];
-  total: number;
-  done: number;
-  pending: number;
-  /** 0 = no baseline yet: the next read only seeds, it must not notify. */
-  seeded: boolean;
-  file_mtime_ms: number | null;
-  last_checked_at: string | null;
-  last_changed_at: string | null;
-};
-
 /** Last known state of one spec (`<project>/specs/<slug>/tasks.md`). */
 export type SpecSnapshot = {
   project_id: number;

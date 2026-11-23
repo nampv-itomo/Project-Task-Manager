@@ -41,6 +41,9 @@ A job inside the server re-reads `<project>/specs/<slug>/tasks.md` every 60s and
 message when tasks newly become complete (one grouped message per project per tick, plus a separate
 message when a spec reaches 100%). Behaviour and invariants: `src/lib/watch/SKILL.md`.
 
+Only the **Spec Kit layout** is counted: `specs/<slug>/tasks.md`. The older `<project>/tasks/<slug>/todo.md`
+form (its own page, watcher and `task_watch` table) has been removed.
+
 **Enable Telegram** — put both values in `.env.local` (read lazily, so a change only needs a restart):
 
 ```bash

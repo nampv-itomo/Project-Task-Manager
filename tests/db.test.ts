@@ -1,13 +1,26 @@
-import { test, before } from "node:test";
+import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import Sqlite from "better-sqlite3";
 
 // db.ts resolves data/projects.db against process.cwd(), so the whole test
 // process is moved into a throwaway directory before the first connection.
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "ptm-db-"));
 process.chdir(tmp);
+
+// Seed the pre-removal shape: task_watch exists and holds a row, so the first
+// getDb() below must drop it. A plain empty temp dir would prove nothing.
+fs.mkdirSync(path.join(tmp, "data"), { recursive: true });
+const legacyDbPath = path.join(tmp, "data", "projects.db");
+const legacy = new Sqlite(legacyDbPath);
+legacy.exec(
+  `CREATE TABLE task_watch (project_id INTEGER NOT NULL, slug TEXT NOT NULL, done_items TEXT NOT NULL DEFAULT '[]');
+   INSERT INTO task_watch (project_id, slug) VALUES (1, 'old-task');`,
+);
+legacy.close();
+assert.ok(fs.existsSync(legacyDbPath), "temp dir must start with the legacy database");
 
 const db = await import("../src/lib/db.ts");
 
@@ -27,15 +40,12 @@ function snapshotCount(projectId: number): number {
   return row.n;
 }
 
-before(() => {
-  assert.ok(!fs.existsSync(path.join(tmp, "data")), "temp dir must start clean");
-});
-
-test("opening the database creates the watch tables", () => {
+test("opening the database creates the watch tables and drops legacy task_watch", () => {
   const names = tableNames();
   assert.ok(names.includes("projects"), "projects table missing");
   assert.ok(names.includes("spec_watch"), "spec_watch table missing");
   assert.ok(names.includes("notification_log"), "notification_log table missing");
+  assert.ok(!names.includes("task_watch"), "the removed task_watch table survived");
 });
 
 test("opening the database twice is idempotent", () => {

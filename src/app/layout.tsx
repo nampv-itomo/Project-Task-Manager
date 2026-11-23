@@ -41,7 +41,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         </a>
         <div className="flex min-h-screen">
           <Sidebar />
-          <div id="main" className="min-w-0 flex-1 px-4 pb-10 pt-16 md:pt-10">
+          <div id="main" className="min-w-0 flex-1 px-4 pb-10 pt-16 md:px-[100px] md:pt-10">
             <ThemeToggle />
             {children}
           </div>
