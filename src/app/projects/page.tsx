@@ -1,10 +1,17 @@
 import fs from "node:fs";
-import Link from "next/link";
 import { listProjects } from "@/lib/db";
 import { listSpecs, sumStats } from "@/lib/specs";
 import { AddProjectForm } from "@/components/add-project-form";
-import { StatsBadges } from "@/components/progress";
 import { RemoveProjectButton } from "@/components/remove-project-button";
+import { RowProgress } from "@/components/progress";
+import { Badge } from "@astryxdesign/core/Badge";
+import { EmptyState } from "@astryxdesign/core/EmptyState";
+import { Heading } from "@astryxdesign/core/Heading";
+import { Layout } from "@astryxdesign/core/Layout";
+import { Link } from "@astryxdesign/core/Link";
+import { List, ListItem } from "@astryxdesign/core/List";
+import { Stack } from "@astryxdesign/core/Stack";
+import { Text } from "@astryxdesign/core/Text";
 
 export const dynamic = "force-dynamic";
 
@@ -20,62 +27,70 @@ export default function ProjectsPage() {
   });
 
   return (
-    <main className="mx-auto w-full space-y-6">
-      <header>
-        <h1 className="text-2xl font-semibold">Dự án</h1>
-        <p className="text-sm text-zinc-500">
-          Danh sách dự án trên máy này (mỗi dự án đọc từ thư mục specs/).
-        </p>
-      </header>
+    <Layout padding={4} contentWidth={960}>
+      <Stack gap={6}>
+        <Stack gap={1}>
+          <Heading level={1}>Dự án</Heading>
+          <Text color="secondary">
+            Danh sách dự án trên máy này (mỗi dự án đọc từ thư mục specs/).
+          </Text>
+        </Stack>
 
-      <section aria-labelledby="add" className="space-y-3">
-        <h2 id="add" className="text-lg font-medium">
-          Thêm dự án
-        </h2>
-        <AddProjectForm />
-      </section>
+        <Stack gap={2}>
+          <Heading level={2}>Thêm dự án</Heading>
+          <AddProjectForm />
+        </Stack>
 
-      <section aria-labelledby="list" className="space-y-3">
-        <h2 id="list" className="text-lg font-medium">
-          Dự án ({projects.length})
-        </h2>
-        {projects.length === 0 && (
-          <p className="rounded-lg border border-dashed border-zinc-300 p-6 text-center text-sm text-zinc-500 dark:border-zinc-700">
-            Chưa có dự án nào. Thêm đường dẫn ở trên để bắt đầu.
-          </p>
+        {projects.length === 0 ? (
+          <EmptyState
+            isCompact
+            headingLevel={3}
+            title="Chưa có dự án nào"
+            description="Thêm đường dẫn ở trên để bắt đầu."
+          />
+        ) : (
+          <List
+            hasDividers
+            density="compact"
+            header={<Heading level={2}>Dự án ({projects.length})</Heading>}
+          >
+            {projects.map((p) => (
+              <ListItem
+                key={p.id}
+                // The row stays non-interactive on purpose: `endContent` holds a
+                // real control (`RemoveProjectButton`) and `List` forbids an
+                // interactive element inside an interactive row. The name is the
+                // link; `Gỡ` is a second, separate affordance.
+                label={<Link href={`/projects/${p.id}`}>{p.name}</Link>}
+                description={
+                  <Stack gap={1}>
+                    {/* Truncated path gets Astryx's own truncation tooltip, so the
+                        old `title={p.path}` attribute is no longer needed. */}
+                    <Text type="code" size="2xs" color="secondary" maxLines={1}>
+                      {p.path}
+                    </Text>
+                    {!p.exists ? (
+                      <Badge variant="error" label="Không tìm thấy thư mục" />
+                    ) : p.specCount === 0 ? (
+                      <Text type="supporting" color="secondary">
+                        Chưa có thư mục specs/.
+                      </Text>
+                    ) : (
+                      <Stack gap={1}>
+                        <Text type="supporting" size="2xs" color="secondary" hasTabularNumbers>
+                          {p.specCount} spec · {p.stats.done}/{p.stats.total} task
+                        </Text>
+                        <RowProgress stats={p.stats} />
+                      </Stack>
+                    )}
+                  </Stack>
+                }
+                endContent={<RemoveProjectButton id={p.id} name={p.name} />}
+              />
+            ))}
+          </List>
         )}
-        <ul className="grid gap-3">
-          {projects.map((p) => (
-            <li
-              key={p.id}
-              className="space-y-3 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <Link
-                    href={`/projects/${p.id}`}
-                    className="text-base font-medium text-blue-600 hover:underline dark:text-blue-400"
-                  >
-                    {p.name}
-                  </Link>
-                  <p className="truncate font-mono text-xs text-zinc-500" title={p.path}>
-                    {p.path}
-                  </p>
-                </div>
-                <RemoveProjectButton id={p.id} name={p.name} />
-              </div>
-              {!p.exists ? (
-                <p className="text-sm text-red-600">Không tìm thấy thư mục.</p>
-              ) : (
-                <>
-                  <p className="text-xs text-zinc-500">{p.specCount} spec</p>
-                  <StatsBadges stats={p.stats} />
-                </>
-              )}
-            </li>
-          ))}
-        </ul>
-      </section>
-    </main>
+      </Stack>
+    </Layout>
   );
 }

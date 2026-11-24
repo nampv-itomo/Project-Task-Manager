@@ -3,34 +3,41 @@
 import { IconButton } from "@astryxdesign/core/IconButton";
 import { MoonIcon, SunIcon } from "@/components/icons";
 
+/**
+ * Light/dark switch, rendered in `AppNav`'s `footerIcons` bar (no fixed
+ * positioning any more: `AppShell` owns the shell, so the toggle travels with
+ * the rail and into the mobile drawer).
+ *
+ * `themeInitScript` in `layout.tsx` sets `.dark` + `data-theme` before paint;
+ * this click keeps both in sync — `.dark` is the Tailwind `dark:` variant hook,
+ * `data-theme` is what the Astryx theme keys light/dark off. Dropping either
+ * breaks one half of the app.
+ *
+ * Icon choice stays CSS-driven (`dark:hidden` / `hidden dark:inline` spans, the
+ * documented escape hatch) so there is no state, no flash and no hydration
+ * mismatch on a server-rendered page.
+ */
 export function ThemeToggle() {
   function toggle() {
     const isDark = document.documentElement.classList.toggle("dark");
-    // .dark keeps the hand-rolled components working; data-theme is what the
-    // Astryx neutral theme keys off (light-dark() + color-scheme). Keep both in
-    // sync so Astryx components also switch on click.
     document.documentElement.dataset.theme = isDark ? "dark" : "light";
     localStorage.setItem("theme", isDark ? "dark" : "light");
   }
 
-  // Icon choice stays CSS-driven (no state → no hydration flash): moon in light
-  // mode (click → dark), sun in dark mode (click → light).
   return (
-    <div className="fixed right-4 top-4 z-50">
-      <IconButton
-        label="Chuyển giao diện sáng/tối"
-        onClick={toggle}
-        icon={
-          <>
-            <span className="dark:hidden">
-              <MoonIcon />
-            </span>
-            <span className="hidden dark:inline">
-              <SunIcon />
-            </span>
-          </>
-        }
-      />
-    </div>
+    <IconButton
+      label="Chuyển giao diện sáng/tối"
+      onClick={toggle}
+      icon={
+        <>
+          <span className="dark:hidden">
+            <MoonIcon />
+          </span>
+          <span className="hidden dark:inline">
+            <SunIcon />
+          </span>
+        </>
+      }
+    />
   );
 }

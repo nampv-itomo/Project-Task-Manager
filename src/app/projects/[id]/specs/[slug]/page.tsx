@@ -1,13 +1,25 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getProject } from "@/lib/db";
 import { computeStats, getSpec } from "@/lib/specs";
 import { getSnapshot } from "@/lib/watch/store";
 import { watchStatus } from "@/lib/watch/start";
 import { AutoCheckLine } from "@/components/watch-status";
-import { ProgressFill, StatsBadges } from "@/components/progress";
+import { RowProgress, StatsBadges } from "@/components/progress";
 import { RefreshButton } from "@/components/refresh-button";
 import { AutoRefresh } from "@/components/auto-refresh";
+import { SpecFilterTabs } from "@/components/spec-filter-tabs";
+import { Badge } from "@astryxdesign/core/Badge";
+import { Breadcrumbs, BreadcrumbItem } from "@astryxdesign/core/Breadcrumbs";
+import { Button } from "@astryxdesign/core/Button";
+import { Collapsible, CollapsibleGroup } from "@astryxdesign/core/Collapsible";
+import { EmptyState } from "@astryxdesign/core/EmptyState";
+import { Heading } from "@astryxdesign/core/Heading";
+import { HStack } from "@astryxdesign/core/HStack";
+import { Icon } from "@astryxdesign/core/Icon";
+import { Layout } from "@astryxdesign/core/Layout";
+import { List, ListItem } from "@astryxdesign/core/List";
+import { Stack } from "@astryxdesign/core/Stack";
+import { Text } from "@astryxdesign/core/Text";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +29,19 @@ const FILTERS = [
   { key: "done", label: "Đã xong" },
 ] as const;
 
+/**
+ * One spec's tasks. `AppRefresh`-driven: `<AutoRefresh>` polls `router.refresh()`
+ * on the watch job's interval so the phase list follows each tick.
+ *
+ * Phases are an Astryx `CollapsibleGroup` (`type="multiple"`, hairline dividers,
+ * `defaultValue={[]}` = every phase closed, the old `<details>` default). The
+ * open/closed state lives inside `Collapsible`/`CollapsibleGroup`'s own client
+ * boundary — the page itself stays a Server Component (Astryx components carry
+ * their own `"use client"`, so children come down as an RSC payload) and a
+ * `router.refresh()` reconciles the same tree position, so an expanded phase
+ * stays expanded. Note rows keep their own uncontrolled `Collapsible` (no
+ * `value` → not group-coordinated, per `useCollapsible`).
+ */
 export default async function SpecPage({
   params,
   searchParams,
@@ -54,131 +79,160 @@ export default async function SpecPage({
     .filter((p) => p.tasks.length > 0);
 
   return (
-    <main className="mx-auto w-full space-y-6">
-      <nav className="text-sm">
-        <Link
-          href={`/projects/${project.id}`}
-          className="text-blue-600 hover:underline dark:text-blue-400"
-        >
-          ← {project.name}
-        </Link>
-      </nav>
-      <header className="flex items-center justify-between gap-3">
-        <h1 className="font-mono text-xl font-semibold">{slug}</h1>
-        <RefreshButton />
-      </header>
-      <AutoRefresh intervalMs={job.intervalMs} enabled={job.enabled} />
+    <Layout padding={4} contentWidth={960}>
+      <Stack gap={6}>
+        <Breadcrumbs variant="supporting">
+          <BreadcrumbItem href="/">Tổng quan</BreadcrumbItem>
+          <BreadcrumbItem href="/projects">Dự án</BreadcrumbItem>
+          <BreadcrumbItem href={`/projects/${project.id}`}>{project.name}</BreadcrumbItem>
+          <BreadcrumbItem isCurrent>{slug}</BreadcrumbItem>
+        </Breadcrumbs>
 
-      {!spec.hasTasks ? (
-        <p className="text-sm text-zinc-500">Spec này chưa có tasks.md.</p>
-      ) : (
-        <>
-          <StatsBadges stats={stats} />
-          <AutoCheckLine
-            summary={watchSummary}
-            enabled={job.enabled}
-            intervalMs={job.intervalMs}
-            heading="Auto-check cho spec này"
-            autoRefreshing
+        <HStack gap={3} hAlign="between" align="center">
+          {/* `font-mono` is a **token-backed** Tailwind utility here:
+             `core/tailwind-theme.css` maps `--font-mono` → `--font-family-code`,
+             so this is the Astryx code font, not a raw font stack. Astryx has no
+             mono variant on `Heading`, and nesting `Text type="code"` would
+             re-size the h1 through `Text`'s own type scale. */}
+          <Heading level={1} className="font-mono">
+            {slug}
+          </Heading>
+          <RefreshButton />
+        </HStack>
+        <AutoRefresh intervalMs={job.intervalMs} enabled={job.enabled} />
+
+        {!spec.hasTasks ? (
+          <EmptyState
+            headingLevel={2}
+            title="Spec này chưa có tasks.md"
+            description="Chạy tasks của Spec Kit trong thư mục dự án để sinh tasks.md, rồi làm mới trang."
           />
-          <div className="flex gap-2" role="group" aria-label="Lọc theo trạng thái">
-            {FILTERS.map((f) => (
-              <Link
-                key={f.key}
-                href={f.key === "all" ? base : `${base}?status=${f.key}`}
-                aria-current={filter === f.key ? "true" : undefined}
-                className={`rounded-md border px-3 py-1 text-sm ${
-                  filter === f.key
-                    ? "border-blue-600 bg-blue-600 text-white"
-                    : "border-zinc-300 hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
-                }`}
-              >
-                {f.label}
-              </Link>
-            ))}
-          </div>
+        ) : (
+          <>
+            <Stack gap={4}>
+              <StatsBadges stats={stats} />
+              <AutoCheckLine
+                summary={watchSummary}
+                enabled={job.enabled}
+                intervalMs={job.intervalMs}
+                heading="Auto-check cho spec này"
+                autoRefreshing
+              />
+            </Stack>
 
-          {phases.length === 0 && (
-            <p className="text-sm text-zinc-500">Không có task nào khớp bộ lọc.</p>
-          )}
-          {phases.map(({ phase, stats, tasks }) => (
-            <section key={phase.title} className="space-y-2">
-              <details className="rounded-lg border border-zinc-200 dark:border-zinc-800 overflow-hidden">
-                <summary className="relative flex cursor-pointer items-center justify-between gap-3 list-none overflow-hidden px-3 py-2 text-base font-semibold">
-                  <ProgressFill stats={stats} />
-                  <span className="relative flex min-w-0 items-center gap-2">
-                    <svg
-                      className="size-3 shrink-0 text-zinc-400 transition-transform [open]:rotate-90"
-                      viewBox="0 0 16 16"
-                      fill="none"
-                      aria-hidden="true"
-                    >
-                      <path
-                        d="M6 4l4 4-4 4"
-                        stroke="currentColor"
-                        strokeWidth="1.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                    {phase.title}
-                  </span>
-                  <span className="relative shrink-0 rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-                    {filter === "pending"
-                      ? `${stats.pending}/${stats.total}`
-                      : `${stats.done}/${stats.total}`}
-                  </span>
-                </summary>
-                <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
-                  {tasks.map((t) => (
-                    <li key={t.id} className="flex gap-3 p-3">
-                      <span
-                        className={`mt-0.5 inline-flex size-5 shrink-0 items-center justify-center rounded border text-xs ${
-                          t.done
-                            ? "border-emerald-600 bg-emerald-600 text-white"
-                            : "border-zinc-400"
-                        }`}
-                        role="img"
-                        aria-label={t.done ? "Đã xong" : "Chưa xong"}
-                      >
-                        {t.done ? "✓" : ""}
-                      </span>
-                      <div className="min-w-0 space-y-1">
-                        <p className={`text-sm ${t.done ? "text-zinc-500" : ""}`}>
-                          <span className="mr-2 font-mono font-medium">{t.id}</span>
-                          {t.tags.map((tag) => (
-                            <span
-                              key={tag}
-                              className="mr-1 rounded bg-zinc-100 px-1.5 py-0.5 text-xs dark:bg-zinc-800"
+            <SpecFilterTabs value={filter} base={base} options={[...FILTERS]} />
+
+            {phases.length === 0 && (
+              <EmptyState
+                isCompact
+                headingLevel={3}
+                title="Không có task nào khớp bộ lọc"
+                actions={<Button label="Xem tất cả task" href={base} variant="secondary" />}
+              />
+            )}
+
+            <CollapsibleGroup
+              // Accordion for the phases: many open at once, hairline dividers,
+              // `defaultValue={[]}` keeps every phase collapsed on load (the old
+              // `<details>` default). The wrapper renders no box of its own
+              // beyond the divider lines — no `border-*`/`bg-*` classes any more.
+              type="multiple"
+              hasDividers
+              density="compact"
+              defaultValue={[]}
+            >
+              {phases.map(({ phase, stats, tasks }) => (
+                <Collapsible
+                  key={phase.title}
+                  value={phase.title}
+                  trigger={
+                    // The badge always counts the phase's **full** task set (never
+                    // the filtered subset) while the fill/width keeps encoding
+                    // completed %; under the "Chưa xong" filter the label reads
+                    // pending/total, which is the complement of the bar.
+                    <Stack gap={1} width="100%">
+                      <HStack gap={2} hAlign="between" align="center">
+                        <Text weight="semibold">{phase.title}</Text>
+                        <Badge
+                          label={
+                            filter === "pending"
+                              ? `${stats.pending}/${stats.total}`
+                              : `${stats.done}/${stats.total}`
+                          }
+                          variant={stats.done === stats.total ? "success" : "neutral"}
+                        />
+                      </HStack>
+                      <RowProgress stats={stats} />
+                    </Stack>
+                  }
+                >
+                  <List density="compact" edge="outset" hasDividers>
+                    {tasks.map((t) => (
+                      <ListItem
+                        key={t.id}
+                        align="start"
+                        startContent={
+                          <Icon
+                            icon={t.done ? "check" : "clock"}
+                            color={t.done ? "success" : "tertiary"}
+                            label={t.done ? "Đã xong" : "Chưa xong"}
+                          />
+                        }
+                        label={
+                          <HStack gap={2} align="center" wrap="wrap">
+                            <Text type="code" size="2xs" weight="medium">
+                              {t.id}
+                            </Text>
+                            {t.tags.map((tag) => (
+                              <Badge key={tag} label={tag} />
+                            ))}
+                            <Text
+                              color={t.done ? "secondary" : "primary"}
+                              hasStrikethrough={t.done}
+                              wordBreak="break-word"
                             >
-                              {tag}
-                            </span>
-                          ))}
-                          <span className="break-words">{t.title}</span>
-                        </p>
-                        {t.notes.length > 0 && (
-                          <details className="text-xs text-zinc-500">
-                            <summary className="cursor-pointer">
-                              Ghi chú ({t.notes.length})
-                            </summary>
-                            <ul className="mt-1 list-disc space-y-1 pl-4">
-                              {t.notes.map((n, i) => (
-                                <li key={i} className="break-words">
-                                  {n}
-                                </li>
-                              ))}
-                            </ul>
-                          </details>
-                        )}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </details>
-            </section>
-          ))}
-        </>
-      )}
-    </main>
+                              {t.title}
+                            </Text>
+                          </HStack>
+                        }
+                        description={
+                          t.notes.length > 0 ? (
+                            // Deliberately **no `value`**: `useCollapsible` only
+                            // defers to the group when the item has one, so this
+                            // row keeps its own open state instead of joining the
+                            // phase accordion.
+                            <Collapsible
+                              defaultIsOpen={false}
+                              trigger={
+                                <Text type="supporting" color="secondary">
+                                  Ghi chú ({t.notes.length})
+                                </Text>
+                              }
+                            >
+                              <Stack gap={1} padding={2}>
+                                {t.notes.map((n, i) => (
+                                  <Text
+                                    key={i}
+                                    type="supporting"
+                                    color="secondary"
+                                    wordBreak="break-word"
+                                  >
+                                    {n}
+                                  </Text>
+                                ))}
+                              </Stack>
+                            </Collapsible>
+                          ) : undefined
+                        }
+                      />
+                    ))}
+                  </List>
+                </Collapsible>
+              ))}
+            </CollapsibleGroup>
+          </>
+        )}
+      </Stack>
+    </Layout>
   );
 }

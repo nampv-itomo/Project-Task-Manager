@@ -6,9 +6,11 @@ import { useRouter } from "next/navigation";
 /**
  * Polls `router.refresh()` on the watch job's interval so the server-rendered
  * phase list follows the 60s auto-check tick. `refresh()` re-renders Server
- * Components and merges the payload without losing scroll position or the
- * open/closed state of native `<details>` rows. Pauses while the tab is hidden
- * and refreshes once when it becomes visible again. Renders no UI.
+ * Components and merges the payload without losing scroll position; an expanded
+ * phase (`CollapsibleGroup` on the spec page) stays expanded because its open
+ * state lives in that island's own React state, which survives the merge.
+ * Pauses while the tab is hidden and refreshes once when it becomes visible
+ * again. Renders no UI.
  */
 export function AutoRefresh({
   intervalMs,

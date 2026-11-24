@@ -1,6 +1,6 @@
 # src/app — route map & shell
 
-Layout shell (`layout.tsx`): skip link → `Sidebar` → `<main id="main">`. Sidebar owns its own padding; page `main` elements must not add `px-*`/`py-*` (the shell provides `px-4 pb-10 pt-16 md:px-[100px] md:pt-10`).
+Layout shell (`layout.tsx`): `<Providers>` → `AppShell` (`height="fill"`, `contentPadding={0}`, `sideNav={<AppNav />}`) → page. `AppShell` builds the skip link, the `<main>` landmark, the mobile nav drawer and the safe-area insets itself; `height="fill"` makes it 100dvh with independent scroll containers. Pages pad their own regions with `Layout`/`LayoutHeader`/`LayoutContent`/`LayoutPanel` token `padding` props — never add `px-*`/`py-*` classes to `<main>`.
 
 ## Astryx integration (UI toolkit)
 
@@ -25,28 +25,33 @@ Invariants:
 - Detail routes are not menu items; they navigate back through breadcrumbs.
 - Thống kê chỉ lấy từ chuẩn Spec Kit (`listSpecs()` đọc `specs/<slug>/tasks.md`). Không còn route `/projects/[id]/tasks/[slug]`, không có screen nào hiển thị số liệu `tasks/<slug>/todo.md`; `/projects` chỉ render `specCount` + `StatsBadges` của spec.
 
-- `/projects/[id]` is a **fixed-height dashboard from `md` up**: `<main>` is a flex column with `md:h-[var(--content-h)]` — `--content-h` is defined in `globals.css` as `calc(100dvh − shell pt+pb)` (`md:pt-10 + pb-10` → `5rem`; mobile `pt-16 + pb-10` → `6.5rem`). `ThemeToggle` is `position:fixed` so it does not consume height. Below `md` the main has auto height and the page scrolls normally.
-  - The body is a 2-column grid (`md:grid-cols-3`, `min-h-0 flex-1`): left `md:col-span-2` = the Specs section only (`flex min-h-0 flex-col`, `<ul>` `flex flex-col gap-2 overflow-y-auto` → fixed row spacing, scrolls in place; do NOT use `grid` here — grid's default `align-content: stretch` stretches rows to fill `flex-1`, so spacing would grow when there are few specs). Each spec is a **single-line row** — a `<Link>` (`relative overflow-hidden`) with `flex items-center gap-3`: slug left (`truncate`) + `done/total` right (`tabular-nums`, `—` when no `tasks.md`). The row carries a **background progress fill** (`ProgressFill` from `src/components/progress.tsx`): an `aria-hidden` `<span class="progress-fill absolute inset-y-0 left-0">` whose **width = done/total %** and whose `--fill-hue` ramps **purple (0%) → green (100%)** (`HUE_FROM=275 → HUE_TO=145`, in `src/components/progress.tsx`); slug + count are `relative` so they sit above the fill. Fill hue only — lightness is theme-specific in `globals.css` (`--progress-fill-l` 86% light / 24% dark) so text stays AA over the fill; count text is `text-zinc-700 dark:text-zinc-200` (the pastel tint drops `zinc-500` to ~3.2:1 → fails AA). % is triple-encoded (fill width + hue + `done/total` label), so colour is never the sole channel. **Specs are the only progress source on every screen** — this page imports `listSpecs` only; the old `<project>/tasks/<slug>/todo.md` feature and its `/projects/[id]/tasks/[slug]` route are removed. Right `md:col-span-1` = `<aside>` with `AutoCheckLine` (compact, fixed at top) then `NotificationLog` (`className="flex min-h-0 flex-1 flex-col gap-2"`, `listClassName="min-h-0 flex-1 overflow-y-auto"` → its `<ul>` scrolls, heading stays). Nav / header / `StatsBadges` are fixed rows above the grid.
-  - `NotificationLog` accepts optional `className` (wrapper `<section>`) and `listClassName` (`<ul>`) for this; defaults keep the plain stacked layout so other usages are unchanged.
+- `/projects/[id]` is a **fixed-height board**: `AppShell height="fill"` gives `<main>` the viewport height and `Layout height="fill"` fills it — no hand-rolled `--content-h` measurement in `globals.css` any more, and mobile behaves the same as desktop (no breakpoint special-casing).
+  - `header` = `LayoutHeader` (breadcrumbs + project name/path + `StatsBadges`), `content` = `LayoutContent` (scrollable) with the `List` of specs only; `end` = `LayoutPanel width={380}` with `AutoCheckLine` then `NotificationLog` (scrolls in place, heading stays). Each spec is a `ListItem`: slug (`type="code"`, `maxLines={1}`) left, `done/total` badge right (`—` when no `tasks.md`), and `RowProgress` (stock `ProgressBar`, `isLabelHidden`) as the row's second line — % stays double-encoded (bar width + badge text), colour never the sole channel. **Specs are the only progress source on every screen** — this page imports `listSpecs` only; the old `<project>/tasks/<slug>/todo.md` feature and its `/projects/[id]/tasks/[slug]` route are removed.
 
-- `/projects/[id]/specs/[slug]` phases render as native `<details>`/`<summary>`:
-  collapsed by default, expand on click (no client JS). Each phase header line
-  shows the phase title plus a `done/total` badge (badge uses the phase's full
-  task stats, not the filtered list). When the "Chưa xong" filter is active the
-  badge switches to `pending/total`. Keep the summary line the only clickable
-  affordance; the `<details>` element drives open/closed state.
-  - The summary row carries the **same progress fill as the spec rows** on
-    `/projects/[id]` (`<ProgressFill stats>` from `src/components/progress.tsx`),
-    keyed off the phase's **full** stats, never the filtered subset: the
-    `summary` is `relative overflow-hidden`, the title and badge spans are
-    `relative` so they paint above the fill, and the `<details>` is
-    `overflow-hidden` so the fill's square left corners get clipped by the
-    rounded row. The fill always encodes **completed** progress (done/total);
-    under the "Chưa xong" filter the `pending/total` label is the complement of
-    the row's unfilled remainder, so fill and label still agree.
+- `/projects/[id]/specs/[slug]` phases render as an Astryx `CollapsibleGroup`
+  (`type="multiple"`, `hasDividers`, `density="compact"`, `defaultValue={[]}` =
+  every phase collapsed on load, the old `<details>` default). Each phase is a
+  `Collapsible` whose `trigger` is the phase title plus a `done/total` badge
+  (badge counts the phase's **full** task stats, never the filtered list). When
+  the "Chưa xong" filter is active the badge label flips to `pending/total`.
+  Open/closed state lives inside `Collapsible`/`CollapsibleGroup`'s own client
+  boundary — the page stays a Server Component (Astryx components carry their
+  own `"use client"`, children arrive as an RSC payload), so there is no
+  hand-rolled `<details>`/`<summary>` and no `border-*`/`bg-*` classes any more.
+  - The trigger row carries the **same `RowProgress` bar as the spec rows** on
+    `/projects/[id]` (`stats` prop = the phase's **full** stats, never the
+    filtered subset); under the "Chưa xong" filter only the badge label flips to
+    `pending/total` while the bar keeps showing **completed** %.
+  - Task notes render as a per-row `Collapsible` with **no `value`**, so
+    `useCollapsible` does not coordinate it with the phase accordion — each row
+    keeps its own open state.
+  - Filters are `SpecFilterTabs` (`src/components/spec-filter-tabs.tsx`):
+    anchor tabs → `?status=done|pending`, so filtering deep-links, survives
+    Back, and stays server-rendered.
   - The page mounts `<AutoRefresh intervalMs={job.intervalMs} enabled={job.enabled} />`
     (`auto-refresh.tsx`): same interval as the auto-check job, so the phase list
-    + `AutoCheckLine` follow each tick; `router.refresh()` preserves scroll and
-    `<details>` open state. Pauses while the tab is hidden. `AutoCheckLine` gets
-    `autoRefreshing` so its footnote matches. Manual `↻ Làm mới` stays for instant
-    refresh. `/projects/[id]` deliberately has **no** auto-refresh (manual only).
+    + `AutoCheckLine` follow each tick; `router.refresh()` reconciles the same
+    tree position, so scroll and an expanded phase's open state survive. Pauses
+    while the tab is hidden. `AutoCheckLine` gets `autoRefreshing` so its
+    footnote matches. Manual `↻ Làm mới` stays for instant refresh.
+    `/projects/[id]` deliberately has **no** auto-refresh (manual only).

@@ -1,14 +1,22 @@
-import type { CSSProperties } from "react";
 import type { Stats } from "@/lib/specs";
 import { Badge } from "@astryxdesign/core/Badge";
 import { ProgressBar } from "@astryxdesign/core/ProgressBar";
 import { HStack } from "@astryxdesign/core/HStack";
 import { Stack } from "@astryxdesign/core/Stack";
 
-/** Purple (0% done) -> green (100% done). Hue only; lightness is theme-driven in CSS. */
-const HUE_FROM = 275;
-const HUE_TO = 145;
-
+/**
+ * Aggregate progress for one scope (a page total, one project, one spec):
+ * done / pending / total pills plus a `role="progressbar"` track with the % as
+ * its value label. `%` is shown three ways (pills, track width, value label),
+ * so colour is never the only channel.
+ *
+ * Invariant — this stays a Server Component, so it must not pass a **function**
+ * prop to an Astryx Client Component (`ProgressBar.formatValueLabel`, `Table`
+ * renderers, …): React serialises props across the server→client boundary and
+ * throws `Functions cannot be passed directly to Client Components`, which 500s
+ * the page and kills `next build` at *Collecting page data*. Keep the default
+ * percentage formatting, or precompute a string and pass it as a plain prop.
+ */
 export function StatsBadges({ stats }: { stats: Stats }) {
   const pct = stats.total ? Math.round((stats.done / stats.total) * 100) : 0;
   return (
@@ -31,29 +39,27 @@ export function StatsBadges({ stats }: { stats: Stats }) {
 }
 
 /**
- * Background progress bar for a list row: sits behind the row content
- * (`absolute inset-y-0 left-0` inside a `relative overflow-hidden` row), width
- * = % tasks done, hue ramps purple -> green. The row must render its own text
- * in `relative` spans so they stay above the fill; `aria-hidden` because the
- * row's `done/total` label already carries the same information.
+ * The per-row bar used inside `List`/`ListItem` rows (spec rows on
+ * `/projects/[id]`, phase rows on `/projects/[id]/specs/[slug]`). Always called
+ * with **full** stats, never a filtered subset — the same number the row's
+ * `done/total` badge shows.
  *
- * Kept as a native span on purpose: Astryx `ProgressBar` renders a standalone
- * track, not a full-bleed fill behind arbitrary row content, so this decorative
- * row fill has no component equivalent (it is `aria-hidden`; the row's own
- * text carries the value).
+ * Replaced the old bespoke `<ProgressFill>` (an `aria-hidden` span painted
+ * behind the whole row with a purple→green hue ramp): `List`/`ListItem` expose
+ * no full-bleed background slot and `ProgressBar` exposes no `className`, so
+ * the fill needed a theme/CSS override on `astryx-item` to survive. Stock
+ * `ProgressBar` keeps the same encoding (width + % text) with theme variants
+ * instead of raw `hsl()` tokens, and drops the AA-over-pastel-fill problem.
  */
-export function ProgressFill({ stats }: { stats: Stats }) {
+export function RowProgress({ stats }: { stats: Stats }) {
   const pct = stats.total > 0 ? (stats.done / stats.total) * 100 : 0;
-  const hue = Math.round(HUE_FROM - (pct / 100) * (HUE_FROM - HUE_TO));
-  const style = {
-    width: `${pct}%`,
-    ["--fill-hue" as string]: String(hue),
-  } as CSSProperties;
   return (
-    <span
-      aria-hidden
-      className="progress-fill absolute inset-y-0 left-0"
-      style={style}
+    <ProgressBar
+      label="Tiến độ"
+      isLabelHidden
+      value={pct}
+      max={100}
+      variant={pct === 100 ? "success" : pct > 0 ? "accent" : "neutral"}
     />
   );
 }
