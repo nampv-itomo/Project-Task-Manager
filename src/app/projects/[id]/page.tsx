@@ -1,24 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import type { CSSProperties } from "react";
 import { getProject } from "@/lib/db";
 import { listSpecs, sumStats } from "@/lib/specs";
 import { projectSnapshots, recentNotifications } from "@/lib/watch/store";
 import { watchStatus } from "@/lib/watch/start";
 import { AutoCheckLine, NotificationLog } from "@/components/watch-status";
-import { StatsBadges } from "@/components/progress";
+import { ProgressFill, StatsBadges } from "@/components/progress";
 
 export const dynamic = "force-dynamic";
-
-/** Purple (0% done) -> green (100% done). Hue only; lightness is theme-driven in CSS. */
-const HUE_FROM = 275;
-const HUE_TO = 145;
-
-function specFill(done: number, total: number): CSSProperties {
-  const pct = total > 0 ? (done / total) * 100 : 0;
-  const hue = Math.round(HUE_FROM - (pct / 100) * (HUE_FROM - HUE_TO));
-  return { width: `${pct}%`, ["--fill-hue" as string]: String(hue) } as CSSProperties;
-}
 
 /** spec_watch stores "YYYY-MM-DD HH:MM:SS" UTC, so plain string max is correct. */
 function latest(values: (string | null)[]): string | null {
@@ -74,11 +63,7 @@ export default async function ProjectPage({
                   href={`/projects/${project.id}/specs/${encodeURIComponent(s.slug)}`}
                   className="relative flex items-center gap-3 overflow-hidden rounded-lg border border-zinc-200 px-4 py-2 hover:border-blue-500 dark:border-zinc-800"
                 >
-                  <span
-                    aria-hidden
-                    className="spec-fill absolute inset-y-0 left-0"
-                    style={specFill(s.stats.done, s.stats.total)}
-                  />
+                  <ProgressFill stats={s.stats} />
                   <span className="relative min-w-0 flex-1 truncate font-mono text-sm font-medium">{s.slug}</span>
                   <span className="relative shrink-0 text-sm tabular-nums text-zinc-700 dark:text-zinc-200">
                     {s.hasTasks ? `${s.stats.done}/${s.stats.total}` : "—"}

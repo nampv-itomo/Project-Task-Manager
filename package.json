@@ -7,9 +7,13 @@
     "build": "next build",
     "start": "next start -p 3600",
     "lint": "eslint",
+    "astryx": "node node_modules/@astryxdesign/cli/clients/cli/bin/astryx.mjs",
     "test": "node --test --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --conditions=react-server \"tests/**/*.test.ts\""
   },
   "dependencies": {
+    "@astryxdesign/core": "^0.7.17",
+    "@astryxdesign/theme-neutral": "^0.7.17",
+    "@stylexjs/stylex": "^0.19.2",
     "better-sqlite3": "^13.2.0",
     "next": "16.4.6",
     "react": "19.3.1",
@@ -17,6 +21,7 @@
     "server-only": "^0.0.1"
   },
   "devDependencies": {
+    "@astryxdesign/cli": "^0.7.17",
     "@tailwindcss/turbopack": "^4.3.5",
     "@types/better-sqlite3": "^9.6.0",
     "@types/node": "^26",
@@ -26,5 +31,8 @@
     "eslint-config-next": "16.4.6",
     "tailwindcss": "^4.3.5",
     "typescript": "^7"
+  },
+  "allowScripts": {
+    "@astryxdesign/core@0.7.17": true
   }
 }

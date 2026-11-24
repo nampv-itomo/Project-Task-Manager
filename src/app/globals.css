@@ -1,6 +1,20 @@
+/* Astryx + Tailwind v4: the @layer declaration MUST sit above the Tailwind
+   import so the astryx layers (reset, astryx-base, astryx-theme) land in the
+   correct cascade order — a @layer line below the import inverts the cascade. */
+@layer reset, theme, base, astryx-base, astryx-theme, components, utilities;
+
 @import "tailwindcss";
 
 @custom-variant dark (&:where(.dark, .dark *));
+
+/* Astryx pre-built CSS alongside Tailwind. Order maps to the layer cascade:
+   reset → astryx-base component styles → theme tokens → tailwind-theme bridge
+   (maps Astryx tokens to Tailwind utilities). fonts.css loads the theme fonts. */
+@import '@astryxdesign/core/reset.css';
+@import '@astryxdesign/core/astryx.css';
+@import '@astryxdesign/theme-neutral/theme.css';
+@import '@astryxdesign/core/tailwind-theme.css';
+@import '@astryxdesign/theme-neutral/fonts.css';
 
 :root {
   --background: #ffffff;
@@ -39,20 +53,21 @@ body {
   }
 }
 
-/* Spec-row progress fill (project detail): the fill's WIDTH encodes % tasks
-   done, and --fill-hue ramps purple (0%) -> green (100%). Width + the done/total
-   text are always present, so colour is never the only channel. Lightness is
-   theme-specific so the row text keeps AA contrast over the fill: a light
-   pastel in light mode (dark text), a dark tint in dark mode (light text). */
+/* Row progress fill (spec rows on the project detail page, phase rows on the
+   spec page): the fill's WIDTH encodes % tasks done, and --fill-hue ramps
+   purple (0%) -> green (100%). Width + the done/total text are always present,
+   so colour is never the only channel. Lightness is theme-specific so the row
+   text keeps AA contrast over the fill: a light pastel in light mode (dark
+   text), a dark tint in dark mode (light text). */
 :root {
-  --spec-fill-s: 65%;
-  --spec-fill-l: 86%;
+  --progress-fill-s: 65%;
+  --progress-fill-l: 86%;
 }
 .dark {
-  --spec-fill-l: 24%;
+  --progress-fill-l: 24%;
 }
-.spec-fill {
-  background-color: hsl(var(--fill-hue, 270) var(--spec-fill-s) var(--spec-fill-l));
+.progress-fill {
+  background-color: hsl(var(--fill-hue, 270) var(--progress-fill-s) var(--progress-fill-l));
 }
 
 /* Sidebar: collapsed state lives on <html> so it is restored before first paint. */

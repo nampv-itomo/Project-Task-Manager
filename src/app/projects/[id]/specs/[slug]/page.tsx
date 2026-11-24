@@ -5,8 +5,9 @@ import { computeStats, getSpec } from "@/lib/specs";
 import { getSnapshot } from "@/lib/watch/store";
 import { watchStatus } from "@/lib/watch/start";
 import { AutoCheckLine } from "@/components/watch-status";
-import { StatsBadges } from "@/components/progress";
+import { ProgressFill, StatsBadges } from "@/components/progress";
 import { RefreshButton } from "@/components/refresh-button";
+import { AutoRefresh } from "@/components/auto-refresh";
 
 export const dynamic = "force-dynamic";
 
@@ -66,6 +67,7 @@ export default async function SpecPage({
         <h1 className="font-mono text-xl font-semibold">{slug}</h1>
         <RefreshButton />
       </header>
+      <AutoRefresh intervalMs={job.intervalMs} enabled={job.enabled} />
 
       {!spec.hasTasks ? (
         <p className="text-sm text-zinc-500">Spec này chưa có tasks.md.</p>
@@ -77,6 +79,7 @@ export default async function SpecPage({
             enabled={job.enabled}
             intervalMs={job.intervalMs}
             heading="Auto-check cho spec này"
+            autoRefreshing
           />
           <div className="flex gap-2" role="group" aria-label="Lọc theo trạng thái">
             {FILTERS.map((f) => (
@@ -100,9 +103,10 @@ export default async function SpecPage({
           )}
           {phases.map(({ phase, stats, tasks }) => (
             <section key={phase.title} className="space-y-2">
-              <details className="rounded-lg border border-zinc-200 dark:border-zinc-800">
-                <summary className="flex cursor-pointer items-center justify-between gap-3 list-none px-3 py-2 text-base font-semibold">
-                  <span className="flex items-center gap-2">
+              <details className="rounded-lg border border-zinc-200 dark:border-zinc-800 overflow-hidden">
+                <summary className="relative flex cursor-pointer items-center justify-between gap-3 list-none overflow-hidden px-3 py-2 text-base font-semibold">
+                  <ProgressFill stats={stats} />
+                  <span className="relative flex min-w-0 items-center gap-2">
                     <svg
                       className="size-3 shrink-0 text-zinc-400 transition-transform [open]:rotate-90"
                       viewBox="0 0 16 16"
@@ -119,7 +123,7 @@ export default async function SpecPage({
                     </svg>
                     {phase.title}
                   </span>
-                  <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+                  <span className="relative shrink-0 rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
                     {filter === "pending"
                       ? `${stats.pending}/${stats.total}`
                       : `${stats.done}/${stats.total}`}

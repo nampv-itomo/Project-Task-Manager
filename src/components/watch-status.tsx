@@ -1,6 +1,11 @@
 import { formatWatchTime } from "@/lib/watch/time";
 import type { ReactNode } from "react";
 import type { NotificationRow, WatchMode } from "@/lib/watch/types";
+import { Badge as AstryxBadge } from "@astryxdesign/core/Badge";
+import { HStack } from "@astryxdesign/core/HStack";
+
+/** Subset of Astryx Badge variants used here (semantic status + neutral/blue tags). */
+type BadgeVariant = "neutral" | "blue" | "success" | "warning" | "error";
 
 /** What the pages know about the watch job for the thing they display. */
 export type AutoCheckSummary = {
@@ -21,10 +26,10 @@ const MODE_LABEL: Record<WatchMode, string> = {
   idle: "Đã 100% — chỉ theo dõi file",
 };
 
-const STATUS_STYLE: Record<string, string> = {
-  sent: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300",
-  error: "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300",
-  skipped_no_config: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
+const STATUS_VARIANT: Record<string, BadgeVariant> = {
+  sent: "success",
+  error: "error",
+  skipped_no_config: "warning",
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -38,30 +43,37 @@ const KIND_LABEL: Record<string, string> = {
   spec_completed: "Spec hoàn thành",
 };
 
-function Badge({ className, title, children }: { className: string; title?: string; children: ReactNode }) {
-  return (
-    <span
-      title={title}
-      className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${className}`}
-    >
-      {children}
-    </span>
-  );
+function Badge({
+  variant = "neutral",
+  title,
+  children,
+}: {
+  variant?: BadgeVariant;
+  title?: string;
+  children: ReactNode;
+}) {
+  const badge = <AstryxBadge variant={variant} label={children} />;
+  // Astryx Badge has no `title` prop, so the full-ISO timestamp tooltip (the
+  // label only shows a short, formatted time) rides on a wrapping native span.
+  return title ? <span title={title}>{badge}</span> : badge;
 }
 
-/** Status block for the auto-check job. Read-only: the page never refreshes itself. */
+/** Status block for the auto-check job. Read-only; it renders no controls. */
 export function AutoCheckLine({
   summary,
   enabled,
   intervalMs,
   id = "auto-check",
   heading = "Auto-check",
+  autoRefreshing = false,
 }: {
   summary: AutoCheckSummary;
   enabled: boolean;
   intervalMs: number;
   id?: string;
   heading?: string;
+  /** Set when the page also mounts `AutoRefresh` on the same interval. */
+  autoRefreshing?: boolean;
 }) {
   return (
     <section aria-labelledby={id} className="space-y-2">
@@ -79,47 +91,32 @@ export function AutoCheckLine({
         </p>
       ) : (
         <>
-          <ul className="flex flex-wrap gap-2">
-            <li>
-              <Badge className="bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-                Chu kỳ: {Math.round(intervalMs / 1000)}s
-              </Badge>
-            </li>
+          <HStack gap={2} wrap="wrap">
+            <Badge>Chu kỳ: {Math.round(intervalMs / 1000)}s</Badge>
             {summary.mode ? (
-              <li>
-                <Badge className="bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-                  {MODE_LABEL[summary.mode]}
-                </Badge>
-              </li>
+              <Badge>{MODE_LABEL[summary.mode]}</Badge>
             ) : (
-              <li>
-                <Badge className="bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-                  Spec theo dõi: {summary.active} đang chạy · {summary.idle} đã 100%
-                </Badge>
-              </li>
-            )}
-            <li>
-              <Badge
-                className="bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
-                title={formatWatchTime(summary.lastCheckedAt, { iso: true })}
-              >
-                Kiểm tra lúc: {formatWatchTime(summary.lastCheckedAt)}
+              <Badge>
+                Spec theo dõi: {summary.active} đang chạy · {summary.idle} đã 100%
               </Badge>
-            </li>
-            {summary.lastChangedAt && (
-              <li>
-                <Badge
-                  className="bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300"
-                  title={formatWatchTime(summary.lastChangedAt, { iso: true })}
-                >
-                  Thay đổi gần nhất: {formatWatchTime(summary.lastChangedAt)}
-                </Badge>
-              </li>
             )}
-          </ul>
+            <Badge title={formatWatchTime(summary.lastCheckedAt, { iso: true })}>
+              Kiểm tra lúc: {formatWatchTime(summary.lastCheckedAt)}
+            </Badge>
+            {summary.lastChangedAt && (
+              <Badge
+                variant="blue"
+                title={formatWatchTime(summary.lastChangedAt, { iso: true })}
+              >
+                Thay đổi gần nhất: {formatWatchTime(summary.lastChangedAt)}
+              </Badge>
+            )}
+          </HStack>
           <p className="text-xs text-zinc-500 dark:text-zinc-400">
-            Job chạy trong server mỗi {Math.round(intervalMs / 1000)}s. Trang này chỉ hiển thị dữ liệu
-            đã có — bấm “Làm mới” để đọc lại.
+            Job chạy trong server mỗi {Math.round(intervalMs / 1000)}s.{" "}
+            {autoRefreshing
+              ? "Trang này tự làm mới theo cùng chu kỳ (khi đang xem) — bấm “Làm mới” để đọc ngay."
+              : "Trang này chỉ hiển thị dữ liệu đã có — bấm “Làm mới” để đọc lại."}
           </p>
         </>
       )}
@@ -165,9 +162,7 @@ export function NotificationLog({
               </span>
               <div className="min-w-0 space-y-1">
                 <p className="flex flex-wrap items-center gap-2 text-sm">
-                  <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-xs dark:bg-zinc-800">
-                    {KIND_LABEL[row.kind] ?? row.kind}
-                  </span>
+                  <Badge>{KIND_LABEL[row.kind] ?? row.kind}</Badge>
                   {row.slug && <span className="font-mono text-xs">{row.slug}</span>}
                 </p>
                 {row.task_ids.length > 0 && (
@@ -187,7 +182,7 @@ export function NotificationLog({
                 )}
               </div>
               <span>
-                <Badge className={STATUS_STYLE[row.status] ?? STATUS_STYLE.error}>
+                <Badge variant={STATUS_VARIANT[row.status] ?? "error"}>
                   {STATUS_LABEL[row.status] ?? row.status}
                 </Badge>
               </span>

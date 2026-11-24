@@ -3,13 +3,8 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  CloseIcon,
-  DashboardIcon,
-  FolderIcon,
-  MenuIcon,
-  PanelToggleIcon,
-} from "@/components/icons";
+import { Icon as AstryxIcon } from "@astryxdesign/core/Icon";
+import { DashboardIcon, FolderIcon } from "@/components/icons";
 
 const STORAGE_KEY = "sidebar-collapsed";
 const CHANGE_EVENT = "sidebar-collapsed-change";
@@ -85,7 +80,7 @@ export function Sidebar() {
         aria-expanded={open}
         className="fixed left-4 top-4 z-50 grid min-h-[44px] min-w-[44px] cursor-pointer place-items-center rounded-md border border-zinc-300 bg-background text-foreground hover:bg-zinc-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:border-zinc-700 dark:hover:bg-zinc-800 md:hidden"
       >
-        <MenuIcon />
+        <AstryxIcon icon="menu" />
       </button>
 
       <aside
@@ -105,7 +100,7 @@ export function Sidebar() {
             title="Đóng menu"
             className="grid min-h-[44px] min-w-[44px] cursor-pointer place-items-center rounded-md text-zinc-600 hover:bg-zinc-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:text-zinc-400 dark:hover:bg-zinc-800 md:hidden"
           >
-            <CloseIcon />
+            <AstryxIcon icon="close" />
           </button>
           <button
             type="button"
@@ -116,7 +111,7 @@ export function Sidebar() {
             aria-expanded={!collapsed}
             className="hidden min-h-[36px] min-w-[36px] cursor-pointer place-items-center rounded-md text-zinc-600 hover:bg-zinc-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:text-zinc-400 dark:hover:bg-zinc-800 md:grid"
           >
-            <PanelToggleIcon />
+            <AstryxIcon icon={collapsed ? "chevronsRight" : "chevronsLeft"} />
           </button>
         </div>
 

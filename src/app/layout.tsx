@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Sidebar } from "@/components/sidebar";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { Providers } from "./providers";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -19,7 +20,7 @@ export const metadata: Metadata = {
   description: "Theo dõi task Spec Kit của các dự án local",
 };
 
-const themeInitScript = `try{var t=localStorage.getItem("theme");if(t==="dark"||(!t&&matchMedia("(prefers-color-scheme: dark)").matches))document.documentElement.classList.add("dark")}catch(e){}`;
+const themeInitScript = `try{var t=localStorage.getItem("theme");var dark=t==="dark"||(!t&&matchMedia("(prefers-color-scheme: dark)").matches);document.documentElement.classList.toggle("dark",dark);document.documentElement.dataset.theme=dark?"dark":"light"}catch(e){}`;
 
 const sidebarInitScript = `try{if(localStorage.getItem("sidebar-collapsed")==="1")document.documentElement.dataset.sidebarCollapsed="1"}catch(e){}`;
 
@@ -43,7 +44,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <Sidebar />
           <div id="main" className="min-w-0 flex-1 px-4 pb-10 pt-16 md:px-[100px] md:pt-10">
             <ThemeToggle />
-            {children}
+            <Providers>{children}</Providers>
           </div>
         </div>
       </body>

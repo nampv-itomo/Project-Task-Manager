@@ -57,7 +57,7 @@ Telegram: `POST https://api.telegram.org/bot<token>/sendMessage`, body `{ chat_i
 
 ## UI contract
 
-`/projects/[id]` hiển thị `AutoCheckLine` (tổng hợp tracked/active/idle của spec) + `NotificationLog` (10 row gần nhất của project); `/projects/[id]/specs/[slug]` hiển thị `AutoCheckLine` riêng cho slug. Dữ liệu chỉ là ảnh chụp lúc render — UI **không auto-refresh**, muốn mới hơn phải bấm "↻ Làm mới".
+`/projects/[id]` hiển thị `AutoCheckLine` (tổng hợp tracked/active/idle của spec) + `NotificationLog` (10 row gần nhất của project); `/projects/[id]/specs/[slug]` hiển thị `AutoCheckLine` riêng cho slug. Dữ liệu là ảnh chụp lúc render. `/projects/[id]/specs/[slug]` mount `AutoRefresh` (`src/components/auto-refresh.tsx`) với **đúng `intervalMs` của job** → phase list + AutoCheckLine tự cập nhật theo mỗi tick (tab ẩn → tạm dừng, hiện lại → refresh ngay); nút "↻ Làm mới" vẫn giữ để đọc tức thì. `/projects/[id]` vẫn manual-refresh-only.
 
 ## Test
 
