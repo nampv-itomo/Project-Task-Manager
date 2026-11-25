@@ -7,6 +7,7 @@ import { HStack } from "@astryxdesign/core/HStack";
 import { Heading } from "@astryxdesign/core/Heading";
 import { Icon } from "@astryxdesign/core/Icon";
 import { List, ListItem } from "@astryxdesign/core/List";
+import { Link } from "@astryxdesign/core/Link";
 import { Stack } from "@astryxdesign/core/Stack";
 import { Text } from "@astryxdesign/core/Text";
 import { Tooltip } from "@astryxdesign/core/Tooltip";
@@ -156,20 +157,28 @@ export function AutoCheckLine({
 }
 
 /**
- * Newest notifications for one project. Never contains the bot token.
+ * Newest notifications. Never contains the bot token.
  * Rows are `List`/`ListItem` (time · kind+slug · task ids + hints · status), so
  * a fixed-height page scrolls them by putting this in `Layout`'s `end` slot with
  * `LayoutPanel isScrollable` — the old `className`/`listClassName` flex+overflow
  * hooks are gone.
+ *
+ * `showProject` (global history page) prefixes each row with the project name as
+ * a link, and `total` lets a paginated list show the whole count instead of just
+ * the rows on the current page.
  */
 export function NotificationLog({
   rows,
   id = "notifications",
   heading = "Thông báo gần đây",
+  showProject = false,
+  total,
 }: {
   rows: NotificationRow[];
   id?: string;
   heading?: string;
+  showProject?: boolean;
+  total?: number;
 }) {
   return (
     <section aria-labelledby={id}>
@@ -178,7 +187,7 @@ export function NotificationLog({
         density="compact"
         header={
           <Heading level={2} id={id}>
-            {heading} ({rows.length})
+            {heading} ({total ?? rows.length})
           </Heading>
         }
       >
@@ -195,6 +204,14 @@ export function NotificationLog({
             }
             label={
               <HStack gap={2} align="center" wrap="wrap">
+                {showProject &&
+                  (row.project_id === null ? (
+                    <Text weight="semibold">{row.project_name}</Text>
+                  ) : (
+                    <Link href={`/projects/${row.project_id}`} weight="semibold">
+                      {row.project_name}
+                    </Link>
+                  ))}
                 <Badge>{KIND_LABEL[row.kind] ?? row.kind}</Badge>
                 {row.slug && (
                   <Text type="code" size="2xs">

@@ -1,5 +1,6 @@
 import { Icon } from "@astryxdesign/core/Icon";
 import {
+  Bell,
   Folder,
   LayoutDashboard,
   Moon,
@@ -25,6 +26,10 @@ export function DashboardIcon() {
 
 export function FolderIcon() {
   return <Icon icon={Folder} />;
+}
+
+export function BellIcon() {
+  return <Icon icon={Bell} />;
 }
 
 // Menu / close / panel-collapse use Astryx semantic icons

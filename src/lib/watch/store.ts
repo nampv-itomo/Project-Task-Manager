@@ -8,6 +8,9 @@ export const MAX_SEND_ATTEMPTS = 5;
 /** Keep this many of the newest notification rows for the UI. */
 export const NOTIFICATION_HISTORY = 200;
 
+/** Default page size of the global notification history page (`/notifications`). */
+export const NOTIFICATIONS_PER_PAGE = 20;
+
 type SpecWatchRow = {
   project_id: number;
   slug: string;
@@ -186,6 +189,28 @@ export function recentNotifications(projectId: number, limit = 10): Notification
     )
     .all(projectId, limit) as LogRow[];
   return rows.map(toLogRow);
+}
+
+/**
+ * One page of the notification history of **all** projects, newest first
+ * (`id` is insertion order, so it is deterministic even when several rows
+ * share a `created_at`). `total` is the whole table, so the UI can paginate
+ * without a second query.
+ */
+export function allNotifications(
+  page = 1,
+  pageSize = NOTIFICATIONS_PER_PAGE,
+): { rows: NotificationRow[]; total: number } {
+  const db = getDb();
+  const size = Math.max(1, Math.floor(pageSize) || NOTIFICATIONS_PER_PAGE);
+  const current = Math.max(1, Math.floor(page) || 1);
+  const { n } = db
+    .prepare("SELECT COUNT(*) AS n FROM notification_log")
+    .get() as { n: number };
+  const rows = db
+    .prepare("SELECT * FROM notification_log ORDER BY id DESC LIMIT ? OFFSET ?")
+    .all(size, (current - 1) * size) as LogRow[];
+  return { rows: rows.map(toLogRow), total: n };
 }
 
 /** Newest `keep` rows survive; id is insertion order, so it is deterministic. */

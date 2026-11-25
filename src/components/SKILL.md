@@ -24,9 +24,10 @@ not failures, and they are intentional):
 - `theme-toggle.tsx` swaps its moon/sun glyph with CSS-driven
   `dark:hidden` / `hidden dark:inline` `<span>`s inside `IconButton`'s `icon`
   slot (the only remaining `className` in the components tree): no React state
-  → no flash and no hydration mismatch on a server-rendered page, and the swap
-  follows the `.dark` class exactly like the rest of the hand-rolled dark-mode
-  parts.
+  → no flash and no hydration mismatch on a server-rendered page. The swap keys
+  off `.dark` on `<html>`, which `applyThemeMode` in `src/lib/theme-mode.ts`
+  writes (seeded pre-paint by `themeInitScript`) — the toggle never touches
+  `<html>` itself any more.
 - `watch-status.tsx` keeps native `<section aria-labelledby>` (Astryx `Section`
   exposes no `id`/landmark role, so the labelled region needs native); its
   headings use `Heading`'s `id` prop for the label anchor. Time-pill hints now
@@ -49,7 +50,28 @@ Per-component notes below.
   toggle) — no hand-rolled drawer/fixed button here any more.
 - Menu items: `NAV_ITEMS` = `/` Tổng quan, `/projects` Dự án; `SideNavItem`
   `as={Link}`, `isSelected` from `usePathname()` (`/projects/[id]` keeps
-  "Dự án" active). `ThemeToggle` sits in `footerIcons`.
+  "Dự án" active).
+- `ThemeToggle` position: `SideNavHeading`'s `headerEndContent` slot — the
+  **top-right of the sidebar**, beside the "Task Manager" heading. That slot is
+  `hidden` when the rail collapses, so `footerIcons` renders a second
+  `ThemeToggle` **only while `collapsed`** (`footerIcons={collapsed ? … :
+  undefined}`) — otherwise the theme could not be switched from a collapsed
+  rail. Two mounts share the same external store, so they never disagree.
+
+## theme-toggle.tsx (client) — the light/dark switch
+- The click **must** go through `setThemeMode()` (`src/lib/theme-mode.ts`):
+  `Providers` renders `<Theme mode>` from that store, so a click re-renders
+  `Theme` with the other scheme and the whole UI follows. Writing `.dark` /
+  `data-theme` by hand is the old design and it only ever moved the glyph —
+  `Theme` on `mode="system"` strips `data-theme` on mount and `light-dark()`
+  keeps following the OS. Do not "fix" the button by painting attributes again.
+- `label`/`tooltip` name the action the next click performs (`Chuyển sang giao
+  diện tối/sáng`) and the click calls `setThemeMode(otherThemeMode(mode))`;
+  both read `useThemeMode()` from `src/lib/theme-mode-context.ts`, the one hook
+  `Providers` also uses, so the button and `<Theme mode>` hydrate from the same
+  seed (`layout.tsx`'s cookie, published through `ThemeModeContext`) and cannot
+  disagree with the markup the server sent. The glyph stays CSS-driven (see the
+  escape hatch above).
 
 ## spec-filter-tabs.tsx (client) — anchor tabs
 - A `TabList` strip whose `Tab`s navigate by `href` (`?status=done|pending`) so

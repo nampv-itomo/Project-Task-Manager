@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import { listProjects } from "@/lib/db";
 import { listSpecs, sumStats } from "@/lib/specs";
-import { RowProgress, StatsBadges } from "@/components/progress";
+import { CountBadge, RowProgress, StatsBadges } from "@/components/progress";
 import { Badge } from "@astryxdesign/core/Badge";
 import { Button } from "@astryxdesign/core/Button";
 import { Card } from "@astryxdesign/core/Card";
@@ -85,16 +85,16 @@ export default function Home() {
                   href={`/projects/${p.id}`}
                   description={<RowProgress stats={p.stats} />}
                   endContent={
-                    <Badge
-                      variant={!p.exists ? "error" : "neutral"}
-                      label={
-                        !p.exists
-                          ? "Không tìm thấy thư mục"
-                          : p.specCount === 0
-                            ? "Chưa có specs/"
-                            : `${p.stats.done}/${p.stats.total}`
-                      }
-                    />
+                    !p.exists ? (
+                      // Status text, not a count — it must stay readable, so it
+                      // keeps Badge's fit-content and is the one row whose bar
+                      // column is a different width (its track is empty at 0/0).
+                      <Badge variant="error" label="Không tìm thấy thư mục" />
+                    ) : p.specCount === 0 ? (
+                      <Badge label="Chưa có specs/" />
+                    ) : (
+                      <CountBadge stats={p.stats} />
+                    )
                   }
                   label={p.name}
                 />

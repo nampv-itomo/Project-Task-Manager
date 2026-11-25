@@ -4,8 +4,7 @@ import { listSpecs, sumStats } from "@/lib/specs";
 import { projectSnapshots, recentNotifications } from "@/lib/watch/store";
 import { watchStatus } from "@/lib/watch/start";
 import { AutoCheckLine, NotificationLog } from "@/components/watch-status";
-import { RowProgress, StatsBadges } from "@/components/progress";
-import { Badge } from "@astryxdesign/core/Badge";
+import { CountBadge, RowProgress, StatsBadges } from "@/components/progress";
 import { Breadcrumbs, BreadcrumbItem } from "@astryxdesign/core/Breadcrumbs";
 import { EmptyState } from "@astryxdesign/core/EmptyState";
 import { Heading } from "@astryxdesign/core/Heading";
@@ -103,13 +102,12 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
                   // Progress lives on the row's second line, and the `done/total`
                   // pill on the right stays the readable channel (the bar is
                   // `isLabelHidden`, so width + text carry the value together).
+                  // `CountBadge` is a fixed-width column on purpose: a
+                  // `fit-content` pill would make each row's label column — and
+                  // so each `width: 100%` bar — as wide as its own number,
+                  // drawing a `5/5` bar longer than a `100/100` one.
                   description={<RowProgress stats={s.stats} />}
-                  endContent={
-                    <Badge
-                      variant={s.hasTasks && s.stats.done === s.stats.total ? "success" : "neutral"}
-                      label={s.hasTasks ? `${s.stats.done}/${s.stats.total}` : "—"}
-                    />
-                  }
+                  endContent={<CountBadge stats={s.stats} hasTasks={s.hasTasks} />}
                 />
               ))}
             </List>

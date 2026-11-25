@@ -180,6 +180,50 @@ test("pruneNotifications keeps the newest rows and drops the oldest", () => {
   assert.equal(kept[199].slug, "spec-50");
 });
 
+test("allNotifications pages every project newest-first and reports the total", () => {
+  // Self-contained: the prune test above may have dropped older rows, so seed
+  // two projects here and compare against the table's real count.
+  for (const [projectId, projectName] of [
+    [21, "ProjX"],
+    [22, "ProjY"],
+  ] as const) {
+    for (let i = 0; i < 3; i += 1) {
+      store.enqueueNotification({
+        projectId,
+        projectName,
+        slug: `spec-${projectName}-${i}`,
+        kind: "tasks_done",
+        taskIds: [`T${projectId}${i}`],
+        message: `${projectName} · ${i}/3 task\n• spec: T${projectId}${i}`,
+      });
+    }
+  }
+
+  const first = store.allNotifications(1, 5);
+  assert.equal(first.rows.length, 5);
+  const total = getDb()
+    .prepare("SELECT COUNT(*) AS n FROM notification_log")
+    .get() as { n: number };
+  assert.equal(first.total, total.n);
+  // id is insertion order → ids strictly decrease across the whole result.
+  const ids = first.rows.map((row) => row.id);
+  assert.deepEqual(ids, [...ids].sort((a, b) => b - a));
+
+  const second = store.allNotifications(2, 5);
+  assert.equal(second.rows.length, 5);
+  assert.equal(second.total, total.n);
+  assert.ok(second.rows[0].id < ids[ids.length - 1]);
+
+  // Cross-project: the history page lists rows of every project together.
+  const names = new Set(store.allNotifications(1, 500).rows.map((row) => row.project_name));
+  assert.ok(names.has("ProjX") && names.has("ProjY"));
+
+  // A page past the end is an empty slice, never an error, and total stays known.
+  const beyond = store.allNotifications(Math.ceil(total.n / 5) + 1, 5);
+  assert.deepEqual(beyond.rows, []);
+  assert.equal(beyond.total, total.n);
+});
+
 test("projectSnapshots lists every watched spec of one project, ordered by slug", () => {
   store.saveSnapshot(seedSnapshot({ project_id: 7, slug: "spec-02-b" }));
   store.saveSnapshot(seedSnapshot({ project_id: 7, slug: "spec-01-a" }));

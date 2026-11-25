@@ -5,10 +5,15 @@
 
 @import "tailwindcss";
 
-/* `dark:` utilities still key off the `.dark` class. `ThemeToggle` + the
-   pre-paint script in `layout.tsx` set `.dark` **and** `data-theme` together:
-   `.dark` is this hook, `data-theme` is what the Astryx theme (light-dark())
-   switches. Both must stay in sync or one half of the UI stops following. */
+/* `dark:` utilities key off the `.dark` class — the only place any hand-rolled
+   part of this app reads the mode (`theme-toggle.tsx`'s moon/sun spans).
+   `applyThemeMode` in `src/lib/theme-mode.ts` writes it, together with
+   `data-theme`, both from the same mode `Providers` renders `<Theme mode>`
+   from, and `layout.tsx`'s pre-paint script seeds it before that runs.
+   `.dark` is the durable key: Astryx's root `Theme` owns `data-theme` (it
+   re-asserts a forced mode and *removes* the attribute on `mode="system"`), so
+   a `dark:` variant keyed on `[data-theme]` would be stripped under a system
+   `Theme`. Keep the two in sync in `applyThemeMode` — never fight it. */
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* Astryx pre-built CSS alongside Tailwind. Order maps to the layer cascade:
@@ -31,6 +36,33 @@
 body {
   background: var(--color-background-body);
   color: var(--color-text-primary);
+}
+
+/* Progress colour ramp — 5 steps of 20%, orange at >0% up to green at 100%
+   (`progressBucket()` in `src/components/progress.tsx` picks the step). These
+   are deliberately **not** `light-dark()`: the requirement is that the bar
+   colour stays identical in light and dark mode, so each step is one flat
+   value. They live here as theme tokens (not scattered hex) so the ramp is
+   tuned in one place. */
+@theme {
+  --color-progress-1: #f97316; /* >0–20%  orange   */
+  --color-progress-2: #eab308; /* 20–40%  amber    */
+  --color-progress-3: #a3c519; /* 40–60%  lime     */
+  --color-progress-4: #4caf50; /* 60–80%  green    */
+  --color-progress-5: #16a34a; /* 80–100% green    */
+}
+
+/* `ProgressBar` takes no colour prop beyond `variant` (5 semantic variants can't
+   express a 5-step hue ramp) and exposes no `className`, so the step is carried
+   by a wrapper class on Astryx `Box` and painted onto the component's own
+   stable theming class. `components` layer + the two-class selector outrank
+   StyleX's single-class rules without an `!important`. */
+@layer components {
+  .progress-ramp1 .astryx-progress-bar-fill { background-color: var(--color-progress-1); }
+  .progress-ramp2 .astryx-progress-bar-fill { background-color: var(--color-progress-2); }
+  .progress-ramp3 .astryx-progress-bar-fill { background-color: var(--color-progress-3); }
+  .progress-ramp4 .astryx-progress-bar-fill { background-color: var(--color-progress-4); }
+  .progress-ramp5 .astryx-progress-bar-fill { background-color: var(--color-progress-5); }
 }
 
 /* Everything else is gone:

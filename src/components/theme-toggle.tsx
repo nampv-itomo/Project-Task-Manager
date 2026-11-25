@@ -2,32 +2,41 @@
 
 import { IconButton } from "@astryxdesign/core/IconButton";
 import { MoonIcon, SunIcon } from "@/components/icons";
+import { otherThemeMode, setThemeMode } from "@/lib/theme-mode";
+import { useThemeMode } from "@/lib/theme-mode-context";
 
 /**
- * Light/dark switch, rendered in `AppNav`'s `footerIcons` bar (no fixed
- * positioning any more: `AppShell` owns the shell, so the toggle travels with
- * the rail and into the mobile drawer).
+ * Light/dark switch. `AppNav` puts it at the **top-right of the sidebar** via
+ * `SideNavHeading`'s `headerEndContent` slot, and again in `footerIcons` only
+ * while the rail is collapsed — that slot is hidden then, so the footer copy
+ * keeps the switch reachable. No fixed positioning: `AppShell` owns the shell,
+ * so the toggle travels with the rail and into the mobile drawer.
  *
- * `themeInitScript` in `layout.tsx` sets `.dark` + `data-theme` before paint;
- * this click keeps both in sync — `.dark` is the Tailwind `dark:` variant hook,
- * `data-theme` is what the Astryx theme keys light/dark off. Dropping either
- * breaks one half of the app.
+ * It does **not** write `<html>` by itself — that was the bug. Hand-setting
+ * `.dark` / `data-theme` only ever moved the glyph, because the root Astryx
+ * `Theme` sat on `mode="system"`, stripped `data-theme` on mount, and let every
+ * `light-dark()` token keep following the OS preference. The click now goes
+ * through `setThemeMode` (`src/lib/theme-mode.ts`), which records the choice and
+ * wakes the external store `Providers` renders `<Theme mode>` from, so `Theme`
+ * declares the scheme and the whole UI follows — no server round-trip.
  *
- * Icon choice stays CSS-driven (`dark:hidden` / `hidden dark:inline` spans, the
- * documented escape hatch) so there is no state, no flash and no hydration
- * mismatch on a server-rendered page.
+ * The glyph stays CSS-driven (`dark:hidden` / `hidden dark:inline` `<span>`s,
+ * the documented escape hatch): `applyThemeMode` + `layout.tsx`'s pre-paint
+ * script write `.dark`, so there is no state, no flash and no mismatch in the
+ * icon. `label`/`tooltip` do read the mode, and both this button and `Theme`
+ * hydrate from the same seed (`useThemeMode`) so they cannot disagree with the
+ * markup the server sent.
  */
 export function ThemeToggle() {
-  function toggle() {
-    const isDark = document.documentElement.classList.toggle("dark");
-    document.documentElement.dataset.theme = isDark ? "dark" : "light";
-    localStorage.setItem("theme", isDark ? "dark" : "light");
-  }
+  const mode = useThemeMode() ?? "light";
+  const toDark = mode !== "dark";
+  const label = toDark ? "Chuyển sang giao diện tối" : "Chuyển sang giao diện sáng";
 
   return (
     <IconButton
-      label="Chuyển giao diện sáng/tối"
-      onClick={toggle}
+      label={label}
+      tooltip={label}
+      onClick={() => setThemeMode(otherThemeMode(mode))}
       icon={
         <>
           <span className="dark:hidden">

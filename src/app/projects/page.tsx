@@ -40,7 +40,6 @@ export default function ProjectsPage() {
           <Heading level={2}>Thêm dự án</Heading>
           <AddProjectForm />
         </Stack>
-
         {projects.length === 0 ? (
           <EmptyState
             isCompact
@@ -65,8 +64,10 @@ export default function ProjectsPage() {
                 description={
                   <Stack gap={1}>
                     {/* Truncated path gets Astryx's own truncation tooltip, so the
-                        old `title={p.path}` attribute is no longer needed. */}
-                    <Text type="code" size="2xs" color="secondary" maxLines={1}>
+                        old `title={p.path}` attribute is no longer needed. `size="sm"`
+                        (was `2xs`): the path is the row's locator, so it reads at
+                        body size rather than as a footnote. */}
+                    <Text type="code" size="sm" color="secondary" maxLines={1}>
                       {p.path}
                     </Text>
                     {!p.exists ? (
@@ -77,7 +78,9 @@ export default function ProjectsPage() {
                       </Text>
                     ) : (
                       <Stack gap={1}>
-                        <Text type="supporting" size="2xs" color="secondary" hasTabularNumbers>
+                        {/* Same bump as the path line: spec/task counts are read
+                            across rows, so they no longer sit at `2xs`. */}
+                        <Text size="sm" color="secondary" hasTabularNumbers>
                           {p.specCount} spec · {p.stats.done}/{p.stats.total} task
                         </Text>
                         <RowProgress stats={p.stats} />

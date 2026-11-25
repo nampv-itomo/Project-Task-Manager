@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useSyncExternalStore } from "react";
 import { SideNav, SideNavHeading, SideNavItem, SideNavSection } from "@astryxdesign/core/SideNav";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { DashboardIcon, FolderIcon } from "@/components/icons";
+import { DashboardIcon, BellIcon, FolderIcon } from "@/components/icons";
 
 const STORAGE_KEY = "sidebar-collapsed";
 const CHANGE_EVENT = "sidebar-collapsed-change";
@@ -13,6 +13,7 @@ const CHANGE_EVENT = "sidebar-collapsed-change";
 export const NAV_ITEMS = [
   { href: "/", label: "Tổng quan", Icon: DashboardIcon },
   { href: "/projects", label: "Dự án", Icon: FolderIcon },
+  { href: "/notifications", label: "Lịch sử thông báo", Icon: BellIcon },
 ];
 
 function subscribeCollapsed(onChange: () => void) {
@@ -58,8 +59,17 @@ export function AppNav() {
   return (
     <SideNav
       aria-label="Thanh menu"
-      header={<SideNavHeading heading="Task Manager" headingHref="/" />}
-      footerIcons={<ThemeToggle />}
+      header={
+        <SideNavHeading
+          heading="Task Manager"
+          headingHref="/"
+          headerEndContent={<ThemeToggle />}
+        />
+      }
+      // `headerEndContent` is hidden when the rail collapses, so the switch
+      // falls back to the footer icon bar — otherwise the theme could not be
+      // changed from a collapsed sidebar.
+      footerIcons={collapsed ? <ThemeToggle /> : undefined}
       collapsible={{
         isCollapsed: collapsed,
         onCollapsedChange,
