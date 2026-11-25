@@ -21,11 +21,14 @@ export function NotificationPagination({
   total,
   pageSize,
   base,
+  query,
 }: {
   page: number;
   total: number;
   pageSize: number;
   base: string;
+  /** Extra query string appended to every page link, e.g. `&size=50`. */
+  query?: string;
 }) {
   // Nothing to paginate when everything fits on one page (Astryx best practice).
   if (total <= pageSize) return null;
@@ -34,7 +37,9 @@ export function NotificationPagination({
     <Pagination
       page={page}
       onChange={() => {}}
-      getPageHref={(next) => (next <= 1 ? base : `${base}?page=${next}`)}
+      getPageHref={(next) =>
+        next <= 1 ? `${base}?${query ?? ""}` : `${base}?page=${next}${query ?? ""}`
+      }
       as={Link}
       totalItems={total}
       pageSize={pageSize}

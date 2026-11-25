@@ -11,6 +11,21 @@ export const NOTIFICATION_HISTORY = 200;
 /** Default page size of the global notification history page (`/notifications`). */
 export const NOTIFICATIONS_PER_PAGE = 20;
 
+/** Page sizes the `/notifications` footer lets the reader pick (`?size=`). */
+export const NOTIFICATIONS_PAGE_SIZES = [10, 20, 50, 100] as const;
+
+/**
+ * `?size=` from the URL, clamped to {@link NOTIFICATIONS_PAGE_SIZES} — anything
+ * else (a typo, a hand-typed `?size=9999`) falls back to the default, so a
+ * shared link can never ask SQLite for an unbounded page.
+ */
+export function normalizeNotificationSize(value: string | number | null | undefined): number {
+  const size = typeof value === "string" ? Number.parseInt(value, 10) : Number(value);
+  return (NOTIFICATIONS_PAGE_SIZES as readonly number[]).includes(size)
+    ? size
+    : NOTIFICATIONS_PER_PAGE;
+}
+
 type SpecWatchRow = {
   project_id: number;
   slug: string;

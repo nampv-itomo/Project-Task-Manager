@@ -20,6 +20,18 @@ The app is wired to the Astryx design system (`@astryxdesign/core` + `@astryxdes
 | `/projects` | Dự án: thêm dự án + danh sách | yes |
 | `/projects/[id]` | Detail của một dự án (danh sách spec) | no (breadcrumb → `/projects`) |
 | `/projects/[id]/specs/[slug]` | Spec + tasks | no (breadcrumb → project) |
+| `/notifications` | Lịch sử thông báo: mọi `notification_log` của mọi dự án, mới → cũ | yes |
+
+- `/notifications` is a **fixed-height board** like `/projects/[id]` (`Layout height="fill"`,
+  `contentWidth={960}`): `header` = `LayoutHeader` (title + footnote), `content` =
+  `LayoutContent` (the only scrolling region, holding `NotificationLog showProject`),
+  `footer` = `LayoutFooter hasDivider` pinned to the bottom edge with `HStack`:
+  `Trang x/y · hiển thị a–b/total` + `NotificationPagination` + `NotificationPageSize`
+  (Astryx `Selector`, `?size=`). Page size comes from `?size=` clamped by
+  `normalizeNotificationSize()` to `NOTIFICATIONS_PAGE_SIZES` (10/20/50/100, default
+  `NOTIFICATIONS_PER_PAGE` = 20); picking a size drops `page` (the old page number means
+  nothing at a new size), and `NotificationPagination` takes a `query` suffix (`&size=N`)
+  so the choice survives paging. A `?page=` past the last page still falls back to page 1.
 
 Invariants:
 - Menu active item is derived from `usePathname()`; `/projects/[id]` keeps "Dự án" active.
