@@ -85,6 +85,14 @@ Per-component notes below.
 - The `<form>` stays native (posts the `addProject` Server Action); `Stack`/
   `HStack` own all spacing — no grid `className`. `TextInput` carries the
   shared `status` error; `pickFolder` runs in a `useTransition`.
+- `AddProjectForm` is **one single line** (name · path · `Chọn thư mục…` ·
+  `Thêm dự án`): `HStack wrap="nowrap" align="end"`, the name field fixed at
+  `width="14rem"`, the path field absorbing the leftover width with
+  `containerClassName="flex-1 min-w-0"`. Two traps that used to break the line:
+  `width="100%"` on a field makes its flex basis the whole container (it can
+  never share a row), and `xstyle`/`containerXstyle` are StyleX-typed so plain
+  `{ flexGrow: 1 }` objects fail `tsc` — token-backed Tailwind utilities on
+  `containerClassName` are the way to flex a field.
 - `RemoveProjectButton` confirms with `AlertDialog` before `deleteProject`.
 - `RefreshButton` = secondary `Button` + `useTransition` → `router.refresh()`;
   `isLoading` shows the pending state. Server pages read fresh data on refresh.

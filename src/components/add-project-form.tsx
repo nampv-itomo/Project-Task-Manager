@@ -10,11 +10,18 @@ import { PlusIcon } from "@/components/icons";
 /**
  * Add-one-project form. The `<form>` stays native (it posts a Server Action —
  * `addProject`) and is only a wrapper: `HStack` owns the spacing, so there is
- * no grid `className` here any more. **All controls sit on one line** — name,
- * path, `Chọn thư mục…`, `Thêm dự án` — with `align="end"` so they share a
- * baseline under the two field labels, and `width="100%"` on the path field so
- * it absorbs the leftover space. Below `HStack`'s wrap breakpoint the line
- * reflows instead of squeezing the path field to nothing.
+ * no grid `className` here any more. **The whole row is one single line** —
+ * name, path, `Chọn thư mục…`, `Thêm dự án` — with `align="end"` so the
+ * controls share a baseline under the field labels.
+ *
+ * `wrap="nowrap"` is what keeps them on one line: the path field used to carry
+ * `width="100%"`, and a flex item whose basis is the full container width can
+ * never share a line, so it dropped onto its own row and pushed both buttons to
+ * a third. The path field now grows into the leftover space with
+ * `containerClassName="flex-1 min-w-0"` — the flex child is the labelled
+ * container (not the input box), `flex-1` absorbs the leftover width and
+ * `min-w-0` lets it shrink below its intrinsic width instead of forcing the row
+ * to overflow. (`xstyle` is StyleX-typed, so plain style objects are rejected.)
  */
 export function AddProjectForm() {
   const [state, action, pending] = useActionState(addProject, undefined);
@@ -36,7 +43,7 @@ export function AddProjectForm() {
 
   return (
     <form action={action}>
-      <HStack gap={2} align="end" wrap="wrap">
+      <HStack gap={2} align="end" wrap="nowrap">
         <TextInput
           label="Tên (tuỳ chọn)"
           value={name}
@@ -51,7 +58,7 @@ export function AddProjectForm() {
           onChange={setFolder}
           htmlName="path"
           placeholder="/Users/me/Work/my-project"
-          width="100%"
+          containerClassName="flex-1 min-w-0"
           status={error ? { type: "error", message: error } : undefined}
         />
         <Button
